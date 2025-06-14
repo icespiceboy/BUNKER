@@ -78,7 +78,7 @@ def get_profession(gender):
         if profession_index not in used_professions:
             if gender == "М":
                 profession = professions[profession_index][0]
-            else: 
+            else:
                 if len(professions[profession_index]) > 1:
                     profession = professions[profession_index][1]
                 else:
@@ -104,12 +104,7 @@ def get_health(gender):
             health = "Идеальное"
             health_status = ""
         else:
-            if health in ["Плоскостопие", "Альцгеймер (передаётся по наследству с 50% \
-            шансом)", "Гемофилия (нарушение свертываемости крови, передаётся по \
-            наследству с 70% шансом)", "Глаукома (повышенное внутриглазное давление, \
-            передаётся по наследству с 50% шансом)", "Деменция", "Дальтонизм \
-            (передаётся по наследству с 50% шансом)", "Умственная отсталость", "Цинга \
-            (слабость, заболевание дёсен)"]:
+            if health in ["Плоскостопие", "Альцгеймер (передаётся по наследству с 50% шансом)", "Гемофилия (нарушение свертываемости крови, передаётся по наследству с 70% шансом)", "Глаукома (повышенное внутриглазное давление, передаётся по наследству с 50% шансом)", "Деменция", "Дальтонизм (передаётся по наследству с 50% шансом)", "Умственная отсталость", "Цинга (слабость, заболевание дёсен)"]:
                 health_status = random.choice([
                     "(Степень тяжести - 10%)",
                     "(Степень тяжести - 20%)",
@@ -123,25 +118,16 @@ def get_health(gender):
                     "(Степень тяжести - 100%)"
             ])
             else:
-                if health in ["Отсутствие ноги", "Отсутствие руки", \
-                              "Полная глухонемота", "Раздвоение личности", \
-                              "Импотенция", "Паранойя", \
-                              "СПИД (финальная стадия ВИЧ-инфекции)"]:
+                if health in ["Отсутствие ноги", "Отсутствие руки", "Полная глухонемота", "Раздвоение личности", "Импотенция", "Паранойя", "СПИД (финальная стадия ВИЧ-инфекции)"]:
                     health_status = ""
                 else:
-                    if health in ["Рак крови (Группа - C)", \
-                                  "Рак молочной железы (Группа - А)", \
-                                  "Рак лёгких (Группа - B)", "Рак кожи (Группа - А)", \
-                                  "Рак желудка (Группа - B)"]:
-                        health_status = random.choice(["(Стадия - Ⅰ)", "(Стадия - Ⅱ)", \
-                                                       "(Стадия - Ⅲ)", "(Стадия - Ⅳ)"])
+                    if health in ["Рак крови (Группа - C)", "Рак молочной железы (Группа - А)", "Рак лёгких (Группа - B)", "Рак кожи (Группа - А)", "Рак желудка (Группа - B)"]:
+                        health_status = random.choice(["(Стадия - Ⅰ)", "(Стадия - Ⅱ)", "(Стадия - Ⅲ)", "(Стадия - Ⅳ)"])
                     else:
                         if health == "Ожирение":
-                            health_status = random.choice(["(Стадия - Ⅰ)", \
-                                                           "(Стадия - Ⅱ)", \
-                                                           "(Стадия - Ⅲ)"])
+                            health_status = random.choice(["(Стадия - Ⅰ)", "(Стадия - Ⅱ)", "(Стадия - Ⅲ)"])
 
-                        else: 
+                        else:
                             health_status = random.choice([
                             "(Степень тяжести - инкубационный период)",
                             "(Степень тяжести - инкубационный период)",
@@ -352,8 +338,7 @@ def play_command(message):
 
             database['user_ordinal'] = user_ordinal
         else:
-            bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой \
-            команды 🔐🚫")
+            bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой команды 🔐🚫")
 
         with open('database.json', 'w', encoding='utf-8') as database_file:
             json.dump(database, database_file, ensure_ascii=False, indent=4)
@@ -393,14 +378,11 @@ def send_generated_card(user_id, card_data):
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    sent_message = bot.send_message(user_id, message_text, reply_markup=reply_markup, \
-                                    parse_mode='HTML')
+    sent_message = bot.send_message(user_id, message_text, reply_markup=reply_markup, parse_mode='HTML')
 
     return sent_message
 
-@bot.callback_query_handler(func=lambda call: call.data in ["bio", "prof", "heal", \
-                                                            "phob", "hobb", "fact", \
-                                                            "bagg", "card1", "card2"])
+@bot.callback_query_handler(func=lambda call: call.data in ["bio", "prof", "heal", "phob", "hobb", "fact", "bagg", "card1", "card2"])
 def update_visible_callback(call):
     chat_id = call.message.chat.id
 
@@ -427,25 +409,20 @@ def update_visible_callback(call):
         message_id = user['card_message_id']
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        new_message_text = generate_message_text(user['card']['chars'], \
-                                                 user['card']['visibility'])
+        new_message_text = generate_message_text(user['card']['chars'], user['card']['visibility'])
 
-        bot.edit_message_text(new_message_text, chat_id, message_id, \
-                              parse_mode='HTML', reply_markup=reply_markup)
+        bot.edit_message_text(new_message_text, chat_id, message_id, parse_mode='HTML', reply_markup=reply_markup)
 
-        bot.answer_callback_query(call.id, text="Статус карты обновлён ✅", \
-                                  show_alert=False)
+        bot.answer_callback_query(call.id, text="Статус карты обновлён ✅", show_alert=False)
 
         with open('database.json', 'w', encoding='utf-8') as database_file:
             json.dump(database, database_file, ensure_ascii=False, indent=4)
 
 def call_command(chat_id, message_id):
-    user = next((user for user in database['players_card'] \
-                 if user['card_message_id'] == message_id), None)
+    user = next((user for user in database['players_card'] if user['card_message_id'] == message_id), None)
 
     if user:
-        new_message_text = generate_message_text(user['card']['chars'], \
-                                                 user['card']['visibility'])
+        new_message_text = generate_message_text(user['card']['chars'], user['card']['visibility'])
         keyboard = [
             [InlineKeyboardButton("БИО", callback_data="bio")],
             [InlineKeyboardButton("Профессия", callback_data="prof"),
@@ -459,8 +436,7 @@ def call_command(chat_id, message_id):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         try:
-            bot.edit_message_text(new_message_text, chat_id, message_id, \
-                                  parse_mode='HTML', reply_markup=reply_markup)
+            bot.edit_message_text(new_message_text, chat_id, message_id, parse_mode='HTML', reply_markup=reply_markup)
         except Exception as e:
             print(f"Ошибка при обновлении сообщения: {e}")
     else:
@@ -522,7 +498,7 @@ def global_command(message):
     if check_subscription(user_id):
         with suppress(Exception):
             bot.delete_message(message.chat.id, message.message_id)
-        
+
         sender_id = message.from_user.id
         admin_id = 833674307
 
@@ -661,32 +637,25 @@ def gen_command(message):
             message_text = "🖐 Выберите игрока (-ов):"
             keyboard = []
 
-            keyboard.append([InlineKeyboardButton("Всем", \
-                                                  callback_data="generate_all")])
+            keyboard.append([InlineKeyboardButton("Всем", callback_data="generate_all")])
 
             for player_id in database['inthegame']:
-                player_name = database['all_users'].get(str(player_id), \
-                                                        "Неизвестный игрок")
-                keyboard.append([InlineKeyboardButton(player_name, \
-                                                      callback_data=f"generate_{player_id}")])
+                player_name = database['all_users'].get(str(player_id), "Неизвестный игрок")
+                keyboard.append([InlineKeyboardButton(player_name, callback_data=f"generate_{player_id}")])
 
-            keyboard.append([InlineKeyboardButton("❌ Отмена ❌", \
-                                                  callback_data="cancel_generate")])
+            keyboard.append([InlineKeyboardButton("❌ Отмена ❌", callback_data="cancel_generate")])
 
             reply_markup = InlineKeyboardMarkup(keyboard)
             bot.send_message(message.chat.id, message_text, reply_markup=reply_markup)
         else:
-            bot.send_message(message.chat.id, "У вас нет разрешения на выполнение \
-            этой команды 🔐🚫")
+            bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой команды 🔐🚫")
     else:
         send_subscription_message(message.chat.id)
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith('generate_') or \
-                            call.data == "cancel_generate")
+@bot.callback_query_handler(func=lambda call: call.data.startswith('generate_') or call.data == "cancel_generate")
 def handle_generate_callback(call):
     if call.data == "cancel_generate":
-        bot.edit_message_text("Вы отменили выбор игрока ❌", call.message.chat.id, \
-                              call.message.message_id)
+        bot.edit_message_text("Вы отменили выбор игрока ❌", call.message.chat.id, call.message.message_id)
         return
 
     if call.data == "generate_all":
@@ -702,8 +671,7 @@ def handle_generate_callback(call):
             [InlineKeyboardButton("❌ Отмена ❌", callback_data="cancel_generate")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        bot.edit_message_text(message_text, chat_id, call.message.message_id, \
-                              reply_markup=reply_markup)
+        bot.edit_message_text(message_text, chat_id, call.message.message_id, reply_markup=reply_markup)
     else:
         player_id = call.data.split('_')[-1]
         chat_id = call.message.chat.id
@@ -718,8 +686,7 @@ def handle_generate_callback(call):
             [InlineKeyboardButton("❌ Отмена ❌", callback_data="cancel_generate")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        bot.edit_message_text(message_text, chat_id, call.message.message_id, \
-                              reply_markup=reply_markup)
+        bot.edit_message_text(message_text, chat_id, call.message.message_id, reply_markup=reply_markup)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('char_'))
 def handle_char_callback(call):
@@ -730,16 +697,13 @@ def handle_char_callback(call):
     if target == "all":
         for player in database['players_card']:
             update_characteristics(player, char)
-        bot.edit_message_text("Характеристики сгенерированы для всех ♻", \
-                              call.message.chat.id, call.message.message_id)
+        bot.edit_message_text("Характеристики сгенерированы для всех ♻", call.message.chat.id, call.message.message_id)
     else:
         player_id = int(target)
-        player = next((player for player in database['players_card'] \
-                       if player['id'] == player_id), None)
+        player = next((player for player in database['players_card'] if player['id'] == player_id), None)
         if player:
             update_characteristics(player, char)
-            bot.edit_message_text("Характеристика сгенерирована ♻", \
-                                  call.message.chat.id, call.message.message_id)
+            bot.edit_message_text("Характеристика сгенерирована ♻", call.message.chat.id, call.message.message_id)
         else:
             bot.send_message(call.message.chat.id, "Игрок не найден 🚫🔍")
 
@@ -801,17 +765,14 @@ def swap_command(message):
             reply_markup = InlineKeyboardMarkup(keyboard)
             bot.send_message(message.chat.id, message_text, reply_markup=reply_markup)
         else:
-            bot.send_message(message.chat.id, "У вас нет разрешения на выполнение \
-            этой команды 🔐🚫")
+            bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой команды 🔐🚫")
     else:
         send_subscription_message(message.chat.id)
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith('swap_char_') or \
-                            call.data == "cancel_swap")
+@bot.callback_query_handler(func=lambda call: call.data.startswith('swap_char_') or call.data == "cancel_swap")
 def handle_swap_char_callback(call):
     if call.data == "cancel_swap":
-        bot.edit_message_text("Вы отменили выбор ❌", call.message.chat.id, \
-                              call.message.message_id)
+        bot.edit_message_text("Вы отменили выбор ❌", call.message.chat.id, call.message.message_id)
         return
 
     char = call.data.split('_')[-1]
@@ -821,14 +782,11 @@ def handle_swap_char_callback(call):
 
     for player_id in database['inthegame']:
         player_name = database['all_users'].get(str(player_id), "Неизвестный игрок")
-        keyboard.append([InlineKeyboardButton(player_name, \
-                                              callback_data=f"select_player1_{char}_{player_id}")])
+        keyboard.append([InlineKeyboardButton(player_name, callback_data=f"select_player1_{char}_{player_id}")])
 
-    keyboard.append([InlineKeyboardButton("❌ Отмена ❌", \
-                                          callback_data="cancel_swap")])
+    keyboard.append([InlineKeyboardButton("❌ Отмена ❌", callback_data="cancel_swap")])
     reply_markup = InlineKeyboardMarkup(keyboard)
-    bot.edit_message_text(message_text, chat_id, call.message.message_id, \
-                          reply_markup=reply_markup)
+    bot.edit_message_text(message_text, chat_id, call.message.message_id, reply_markup=reply_markup)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('select_player1_'))
 def handle_select_player1_callback(call):
@@ -841,14 +799,11 @@ def handle_select_player1_callback(call):
 
     for player_id in database['inthegame']:
         player_name = database['all_users'].get(str(player_id), "Неизвестный игрок")
-        keyboard.append([InlineKeyboardButton(player_name, \
-                                              callback_data=f"select_player2_{char}_{player1_id}_{player_id}")])
+        keyboard.append([InlineKeyboardButton(player_name, callback_data=f"select_player2_{char}_{player1_id}_{player_id}")])
 
-    keyboard.append([InlineKeyboardButton("❌ Отмена ❌", \
-                                          callback_data="cancel_swap")])
+    keyboard.append([InlineKeyboardButton("❌ Отмена ❌", callback_data="cancel_swap")])
     reply_markup = InlineKeyboardMarkup(keyboard)
-    bot.edit_message_text(message_text, chat_id, call.message.message_id, \
-                          reply_markup=reply_markup)
+    bot.edit_message_text(message_text, chat_id, call.message.message_id, reply_markup=reply_markup)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('select_player2_'))
 def handle_select_player2_callback(call):
@@ -948,8 +903,7 @@ def handle_select_player2_callback(call):
         call_command(player1_id, player1['card_message_id'])
         call_command(player2_id, player2['card_message_id'])
 
-        bot.edit_message_text("Харакетристики обменяты ♻", call.message.chat.id, \
-                              call.message.message_id)
+        bot.edit_message_text("Харакетристики обменяты ♻", call.message.chat.id, call.message.message_id)
     else:
         bot.send_message(chat_id_sender, "Один или оба игрока не найдены 🚫🔍")
 
@@ -979,12 +933,10 @@ def kick_command(message):
     else:
         send_subscription_message(message.chat.id)
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith('kick_player_') \
-                            or call.data == "cancel_kick")
+@bot.callback_query_handler(func=lambda call: call.data.startswith('kick_player_') or call.data == "cancel_kick")
 def handle_kick_callback(call):
     if call.data == "cancel_kick":
-        bot.edit_message_text("Вы отменили выбор ❌", call.message.chat.id, \
-                              call.message.message_id)
+        bot.edit_message_text("Вы отменили выбор ❌", call.message.chat.id, call.message.message_id)
         return
 
     player_id = int(call.data.split('_')[-1])
@@ -1001,11 +953,9 @@ def handle_kick_callback(call):
         if player_id in database['inthegame']:
             database['inthegame'].remove(player_id)
 
-        bot.edit_message_text("Игрок успешно удалён 🗑✅", call.message.chat.id, \
-                              call.message.message_id)
+        bot.edit_message_text("Игрок успешно удалён 🗑✅", call.message.chat.id, call.message.message_id)
     else:
-        bot.edit_message_text("Игрок не найден 🚫🔍", call.message.chat.id, \
-                              call.message.message_id)
+        bot.edit_message_text("Игрок не найден 🚫🔍", call.message.chat.id, call.message.message_id)
 
     with open('database.json', 'w', encoding='utf-8') as database_file:
         json.dump(database, database_file, ensure_ascii=False, indent=4)
@@ -1037,11 +987,9 @@ def fer_command(message):
 
             for player_id in database['inthegame']:
                 player_name = database['all_users'].get(str(player_id), "Unknown")
-                keyboard.append([InlineKeyboardButton(player_name, \
-                                                      callback_data=f"remove_fertility_{player_id}")])
+                keyboard.append([InlineKeyboardButton(player_name, callback_data=f"remove_fertility_{player_id}")])
 
-            keyboard.append([InlineKeyboardButton("❌ Отмена ❌", \
-                  callback_data="cancel_fertility")])
+            keyboard.append([InlineKeyboardButton("❌ Отмена ❌", callback_data="cancel_fertility")])
 
             reply_markup = InlineKeyboardMarkup(keyboard)
             bot.send_message(message.chat.id, message_text, reply_markup=reply_markup)
@@ -1062,27 +1010,22 @@ def remove_fertility_callback(call):
         if player['id'] == player_id:
             fertility_status = player['card']['chars']['bio']['fertility']
 
-            if ", неспособна рожать" in fertility_status or \
-            ", неспособен оплодотворять" in fertility_status:
-                bot.edit_message_text("Последствия старости никак не убрать 👴🏻", \
-                                      call.message.chat.id, call.message.message_id)
+            if ", неспособна рожать" in fertility_status or ", неспособен оплодотворять" in fertility_status:
+                bot.edit_message_text("Последствия старости никак не убрать 👴🏻", call.message.chat.id, call.message.message_id)
             elif fertility_status == "":
-                bot.edit_message_text("Менять нечего 🤰🏻💢", call.message.chat.id, \
-                                      call.message.message_id)
+                bot.edit_message_text("Менять нечего 🤰🏻💢", call.message.chat.id, call.message.message_id)
             else:
                 player['card']['chars']['bio']['fertility'] = ""
                 with open('database.json', 'w', encoding='utf-8') as database_file:
                     json.dump(database, database_file, ensure_ascii=False, indent=4)
 
                 call_command(player_id, player['card_message_id'])
-                bot.edit_message_text("Готово, теперь игрок плоден! 🤰🏻", \
-                                      call.message.chat.id, call.message.message_id)
+                bot.edit_message_text("Готово, теперь игрок плоден! 🤰🏻", call.message.chat.id, call.message.message_id)
             break
 
 @bot.callback_query_handler(func=lambda call: call.data == 'cancel_fertility')
 def cancel_fertility_callback(call):
-    bot.edit_message_text("Вы отменили выбор игрока ❌", call.message.chat.id, \
-                          call.message.message_id)
+    bot.edit_message_text("Вы отменили выбор игрока ❌", call.message.chat.id, call.message.message_id)
 
 @bot.message_handler(commands=['shuffle'])
 def shuffle_command(message):
@@ -1144,13 +1087,13 @@ def card_command(message):
     if check_subscription(user_id):
         user_id = message.from_user.id
         user = next((player for player in database['players_card'] if player['id'] == user_id), None)
-    
+
         if not user:
             bot.send_message(user_id, "Вы не в игре 😕📛")
             return
-    
+
         card_data = user['card']
-    
+
         new_message_text = generate_message_text(card_data['chars'], card_data['visibility'])
         keyboard = [
             [InlineKeyboardButton("БИО", callback_data="bio")],
@@ -1164,11 +1107,11 @@ def card_command(message):
              InlineKeyboardButton("Карта №2", callback_data="card2")],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        
+
         sent_message = bot.send_message(user_id, new_message_text, reply_markup=reply_markup, parse_mode='HTML')
-    
+
         user['card_message_id'] = sent_message.message_id
-    
+
         with open('database.json', 'w', encoding='utf-8') as database_file:
             json.dump(database, database_file, ensure_ascii=False, indent=4)
     else:
@@ -1182,16 +1125,16 @@ def set_nick_command(message):
     if check_subscription(user_id):
         with suppress(Exception):
             bot.delete_message(message.chat.id, message.message_id)
-    
+
         keyboard = InlineKeyboardMarkup()
         keyboard.add(InlineKeyboardButton("Отменить ❌", callback_data="setnick_cancel_initial"))
-    
+
         sent_message = bot.send_message(
             message.chat.id,
             "💁‍♀️ Укажите свой новый никнейм:",
             reply_markup=keyboard
         )
-    
+
         nick_selection[user_id] = {
             'stage': 'awaiting_nick',
             'message_id': sent_message.message_id,
@@ -1199,7 +1142,7 @@ def set_nick_command(message):
         }
     else:
         send_subscription_message(message.chat.id)
-    
+
 @bot.message_handler(func=lambda msg: nick_selection.get(msg.from_user.id, {}).get('stage') == 'awaiting_nick')
 def receive_nick(message):
     user_id = message.from_user.id
@@ -1224,7 +1167,7 @@ def receive_nick(message):
         f"💁‍♀️ Сменить ваш текущий никнейм <b>\"{current_nick}\"</b> на новый <b>\"{new_nick}\"</b>?\n\nПодтвердите действие:",
         message.chat.id,
         user_data['message_id'],
-        reply_markup=keyboard, 
+        reply_markup=keyboard,
         parse_mode='HTML'
     )
 
@@ -1264,17 +1207,17 @@ def handle_nick_confirmation(call):
         bot.edit_message_text(
             f'Ваш новый никнейм <b>"{new_nick}"</b> успешно установлен ✅',
             call.message.chat.id,
-            call.message.message_id, 
+            call.message.message_id,
             parse_mode='HTML'
         )
         nick_selection.pop(user_id, None)
 
     elif action == "edit":
         nick_selection[user_id]['stage'] = 'awaiting_nick'
-    
+
         keyboard = InlineKeyboardMarkup()
         keyboard.add(InlineKeyboardButton("Отменить ❌", callback_data="setnick_cancel_initial"))
-    
+
         bot.edit_message_text(
             "💁‍♀️ Укажите свой новый никнейм:",
             call.message.chat.id,
