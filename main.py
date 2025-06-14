@@ -1,5 +1,7 @@
 import json
 import random
+import os
+from dotenv import load_dotenv
 from contextlib import suppress
 
 import telebot
@@ -32,7 +34,8 @@ with open('array_card.json', 'r', encoding='utf-8') as card_file:
     cards = json.load(card_file)
 
 CHANNEL_ID = '@bunkernewss'
-bot = telebot.TeleBot('6494277541:AAHtxIlerPHyq0_P3hlS5Y2sVEI0H5c0__g')
+load_dotenv()
+bot = telebot.TeleBot(os.getenv('bot_token'))
 
 def check_subscription(user_id):
     try:
