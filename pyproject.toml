@@ -7,5 +7,6 @@ requires-python = ">=3.11"
 dependencies = [
     "flask>=3.1.0",
     "pytelegrambotapi>=4.24.0",
+    "replicate>=1.0.7",
     "requests>=2.32.3",
 ]
