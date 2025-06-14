@@ -7,8 +7,6 @@ from contextlib import suppress
 import telebot
 from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from hosting import keep_alive
-
 with open('database.json', 'r', encoding='utf-8') as database_file:
     database = json.load(database_file)
 
@@ -35,7 +33,7 @@ with open('array_card.json', 'r', encoding='utf-8') as card_file:
 
 CHANNEL_ID = '@bunkernewss'
 load_dotenv()
-bot = telebot.TeleBot(os.getenv('bot_token'))
+bot = telebot.TeleBot(os.getenv('TOKEN'))
 
 def check_subscription(user_id):
     try:
@@ -1302,5 +1300,4 @@ def send_subscription_message(chat_id):
         reply_markup=keyboard
     )
 
-keep_alive()
 bot.polling()

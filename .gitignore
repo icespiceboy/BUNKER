@@ -1,1 +1,5 @@
+# PyCharm
+.idea/
+
+# Secrets
 .env
