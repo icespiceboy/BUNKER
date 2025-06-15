@@ -1,6 +1,7 @@
 import json
 import random
 import os
+import requests
 from dotenv import load_dotenv
 from contextlib import suppress
 
@@ -33,7 +34,7 @@ with open('array_card.json', 'r', encoding='utf-8') as card_file:
 
 CHANNEL_ID = '@bunkernewss'
 load_dotenv()
-bot = telebot.TeleBot(os.getenv('TOKEN'))
+bot = telebot.TeleBot(os.getenv('TELEGRAMTOKEN'))
 
 def check_subscription(user_id):
     try:
@@ -1242,5 +1243,65 @@ def send_subscription_message(chat_id):
         "Чтобы пользоваться этим ботом, вы должны быть подписаны на новостной канал! 😄👇",
         reply_markup=keyboard
     )
+
+DEEPSEEKTOKEN='io-v2-eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJvd25lciI6Ijg4ZTQ0ZGI5LWI0ZTMtNGNmNy1hMjRlLWVjNTRjOGEzNWIzNiIsImV4cCI6NDkwMzU5MTY1MH0.MDnkcp6NPlA1yt7744rglcd1Ig5mVaH_JxK5AWG-kX9PpJWrMH_AK4XLnAhermds1BvdApWNaZC2DYthfF4SJQ'
+
+@bot.message_handler(commands=["finish"])
+def finish_handler(message):
+    try:
+        with open("database.json", "r", encoding="utf-8") as f:
+            db = json.load(f)
+
+        players_data = []
+        for player in db.get("players_card", []):
+            card = player["card"]["chars"]
+            bio = card["bio"]
+            player_data = [
+                bio["gender_name"],
+                f"{bio['age']} {bio['years']}",
+                card["prof"],
+                f"{bio['age_work']} {bio['years_work']}",
+                card["heal"],
+                card["phob"],
+                card["hobb"],
+                card["fact"],
+                card["bagg"]
+            ]
+            players_data.append(player_data)
+
+        prompt = (
+            "Игра Бункер. Катастрофа: зомби-апокалипсис. Проанализируй персонажей и выдай краткий общий итог в первой строке: победа или поражение группы. "
+            "Затем дай краткий связный текст в 2 абзацах о том, кто внёс вклад в выживание, а кто мешал. Не пиши размышления. Не разделяй игроков. Не пиши длинно.\n\n"
+        )
+        for i, pdata in enumerate(players_data, 1):
+            prompt += f"Игрок {i}: {', '.join(pdata)}\n"
+
+        url = "https://api.intelligence.io.solutions/api/v1/chat/completions"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {DEEPSEEKTOKEN}"
+        }
+
+        data = {
+            "model": "deepseek-ai/DeepSeek-R1-0528",
+            "messages": [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt}
+            ]
+        }
+
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+        result = response.json()
+
+        full_response = result["choices"][0]["message"]["content"]
+
+        if "</think>" in full_response:
+            full_response = full_response.split("</think>")[-1].strip()
+
+        bot.send_message(message.chat.id, full_response)
+
+    except Exception as e:
+        bot.send_message(message.chat.id, f"⚠️ Ошибка: {str(e)}")
 
 bot.polling()
