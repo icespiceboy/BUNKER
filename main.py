@@ -4,9 +4,10 @@ import os
 import requests
 from dotenv import load_dotenv
 from contextlib import suppress
-
 import telebot
 from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
+
+load_dotenv()
 
 with open('database.json', 'r', encoding='utf-8') as database_file:
     database = json.load(database_file)
@@ -33,14 +34,14 @@ with open('array_card.json', 'r', encoding='utf-8') as card_file:
     cards = json.load(card_file)
 
 CHANNEL_ID = '@bunkernewss'
-load_dotenv()
 bot = telebot.TeleBot(os.getenv('TELEGRAMTOKEN'))
 
 def check_subscription(user_id):
     try:
         member_status = bot.get_chat_member(CHANNEL_ID, user_id).status
         return member_status in ['member', 'administrator', 'creator']
-    except Exception:
+    except Exception as e:
+        print(f"Ошибка check_subscription: {e}")
         return False
 
 @bot.message_handler(commands=['start'])
@@ -50,8 +51,8 @@ def start_command(message):
     if str(user_id) not in database['all_users']:
         database['all_users'][str(user_id)] = user_name
 
-        with open('database.json', 'w', encoding='utf-8') as database_file:
-            json.dump(database, database_file, ensure_ascii=False, indent=4)
+        with open('database.json', 'w', encoding='utf-8') as file:
+            json.dump(database, file, ensure_ascii=False, indent=4)
 
 def get_years(age):
     last_digit = age % 10
@@ -105,7 +106,11 @@ def get_health(gender):
             health = "Идеальное"
             health_status = ""
         else:
-            if health in ["Плоскостопие", "Альцгеймер (передаётся по наследству с 50% шансом)", "Гемофилия (нарушение свертываемости крови, передаётся по наследству с 70% шансом)", "Глаукома (повышенное внутриглазное давление, передаётся по наследству с 50% шансом)", "Деменция", "Дальтонизм (передаётся по наследству с 50% шансом)", "Умственная отсталость", "Цинга (слабость, заболевание дёсен)"]:
+            if health in ("Плоскостопие", "Альцгеймер (передаётся по наследству с 50% шансом)",
+                          "Гемофилия (нарушение свертываемости крови, передаётся по наследству с 70% шансом)",
+                          "Глаукома (повышенное внутриглазное давление, передаётся по наследству с 50% шансом)",
+                          "Деменция", "Дальтонизм (передаётся по наследству с 50% шансом)", "Умственная отсталость",
+                          "Цинга (слабость, заболевание дёсен)"):
                 health_status = random.choice([
                     "(Степень тяжести - 10%)",
                     "(Степень тяжести - 20%)",
@@ -116,35 +121,41 @@ def get_health(gender):
                     "(Степень тяжести - 70%)",
                     "(Степень тяжести - 80%)",
                     "(Степень тяжести - 90%)",
-                    "(Степень тяжести - 100%)"
-            ])
+                    "(Степень тяжести - 100%)"])
             else:
-                if health in ["Отсутствие ноги", "Отсутствие руки", "Полная глухонемота", "Раздвоение личности", "Импотенция", "Паранойя", "СПИД (финальная стадия ВИЧ-инфекции)"]:
+                if health in ("Отсутствие ноги", "Отсутствие руки", "Полная глухонемота", "Раздвоение личности",
+                              "Импотенция", "Паранойя", "СПИД (финальная стадия ВИЧ-инфекции)"):
                     health_status = ""
                 else:
-                    if health in ["Рак крови (Группа - C)", "Рак молочной железы (Группа - А)", "Рак лёгких (Группа - B)", "Рак кожи (Группа - А)", "Рак желудка (Группа - B)"]:
+                    if health in ("Рак крови (Группа - C)", "Рак молочной железы (Группа - А)",
+                                  "Рак лёгких (Группа - B)", "Рак кожи (Группа - А)", "Рак желудка (Группа - B)"):
                         health_status = random.choice(["(Стадия - Ⅰ)", "(Стадия - Ⅱ)", "(Стадия - Ⅲ)", "(Стадия - Ⅳ)"])
                     else:
                         if health == "Ожирение":
                             health_status = random.choice(["(Стадия - Ⅰ)", "(Стадия - Ⅱ)", "(Стадия - Ⅲ)"])
 
                         else:
-                            health_status = random.choice([
-                            "(Степень тяжести - инкубационный период)",
-                            "(Степень тяжести - инкубационный период)",
-                            "(Степень тяжести - 10%)",
-                            "(Степень тяжести - 20%)",
-                            "(Степень тяжести - 30%)",
-                            "(Степень тяжести - 40%)",
-                            "(Степень тяжести - 50%)",
-                            "(Степень тяжести - 60%)",
-                            "(Степень тяжести - 70%)",
-                            "(Степень тяжести - 80%)",
-                            "(Степень тяжести - 90%)",
-                            "(Степень тяжести - 100%)",
-                            "(Степень тяжести - ремиссия)",
-                            "(Степень тяжести - ремиссия)"
-                            ])
+                            if health == "Сахарный диабет":
+                                health_status = random.choice([
+                                    "(Врождённый)",
+                                    "(Приобретённый)"])
+                            else:
+                                health_status = random.choice([
+                                    "(Степень тяжести - инкубационный период)",
+                                    "(Степень тяжести - инкубационный период)",
+                                    "(Степень тяжести - 10%)",
+                                    "(Степень тяжести - 20%)",
+                                    "(Степень тяжести - 30%)",
+                                    "(Степень тяжести - 40%)",
+                                    "(Степень тяжести - 50%)",
+                                    "(Степень тяжести - 60%)",
+                                    "(Степень тяжести - 70%)",
+                                    "(Степень тяжести - 80%)",
+                                    "(Степень тяжести - 90%)",
+                                    "(Степень тяжести - 100%)",
+                                    "(Степень тяжести - ремиссия)",
+                                    "(Степень тяжести - ремиссия)"
+                                    ])
 
     return health, health_status, health_index
 
@@ -209,7 +220,7 @@ def get_card():
         age = random.randint(56, 80)
 
     if age <= 25:
-            gender_name = "Парень" if gender == "М" else "Девушка"
+        gender_name = "Парень" if gender == "М" else "Девушка"
     elif age <= 35:
         gender_name = "Молодой человек" if gender == "М" else "Девушка"
     elif age <= 59:
@@ -242,16 +253,16 @@ def get_card():
     used_cards = database['used']['cards']
 
     while True:
-      card1_index = random.choice(list(cards.keys()))
-      if card1_index not in used_cards:
-          card1 = cards[card1_index][0]
-          break
+        card1_index = random.choice(list(cards.keys()))
+        if card1_index not in used_cards:
+            card1 = cards[card1_index][0]
+            break
 
     while True:
-      card2_index = random.choice(list(cards.keys()))
-      if card2_index != card1_index and card2_index not in used_cards:
-          card2 = cards[card2_index][0]
-          break
+        card2_index = random.choice(list(cards.keys()))
+        if card2_index != card1_index and card2_index not in used_cards:
+            card2 = cards[card2_index][0]
+            break
 
     database['used']['cards'].extend([card1_index, card2_index])
 
@@ -341,10 +352,24 @@ def play_command(message):
         else:
             bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой команды 🔐🚫")
 
-        with open('database.json', 'w', encoding='utf-8') as database_file:
-            json.dump(database, database_file, ensure_ascii=False, indent=4)
+        with open('database.json', 'w', encoding='utf-8') as file:
+            json.dump(database, file, ensure_ascii=False, indent=4)
     else:
         send_subscription_message(message.chat.id)
+
+def get_card_keyboard():
+    keyboard = [
+        [InlineKeyboardButton("БИО", callback_data="bio")],
+        [InlineKeyboardButton("Профессия", callback_data="prof"),
+         InlineKeyboardButton("Здоровье", callback_data="heal"),
+         InlineKeyboardButton("Фобия", callback_data="phob")],
+        [InlineKeyboardButton("Хобби", callback_data="hobb"),
+         InlineKeyboardButton("Факт", callback_data="fact"),
+         InlineKeyboardButton("Багаж", callback_data="bagg")],
+        [InlineKeyboardButton("Карта №1", callback_data="card1"),
+         InlineKeyboardButton("Карта №2", callback_data="card2")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
 
 def send_generated_card(user_id, card_data):
     bio_data = card_data.get('chars').get('bio')
@@ -365,25 +390,14 @@ def send_generated_card(user_id, card_data):
         f"× <b>Карта №2:</b> {card_data.get('chars').get('card2')}"
     )
 
-    keyboard = [
-        [InlineKeyboardButton("БИО", callback_data="bio")],
-        [InlineKeyboardButton("Профессия", callback_data="prof"),
-         InlineKeyboardButton("Здоровье", callback_data="heal"),
-         InlineKeyboardButton("Фобия", callback_data="phob")],
-        [InlineKeyboardButton("Хобби", callback_data="hobb"),
-         InlineKeyboardButton("Факт", callback_data="fact"),
-         InlineKeyboardButton("Багаж", callback_data="bagg")],
-        [InlineKeyboardButton("Карта №1", callback_data="card1"),
-         InlineKeyboardButton("Карта №2", callback_data="card2")],
-    ]
-
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    reply_markup = get_card_keyboard()
 
     sent_message = bot.send_message(user_id, message_text, reply_markup=reply_markup, parse_mode='HTML')
 
     return sent_message
 
-@bot.callback_query_handler(func=lambda call: call.data in ["bio", "prof", "heal", "phob", "hobb", "fact", "bagg", "card1", "card2"])
+@bot.callback_query_handler(func=lambda call: call.data in ["bio", "prof", "heal", "phob", "hobb", "fact", "bagg",
+                                                            "card1", "card2"])
 def update_visible_callback(call):
     chat_id = call.message.chat.id
 
@@ -392,23 +406,11 @@ def update_visible_callback(call):
     if user:
         element_to_update = call.data
 
-        user['card']['visibility'][element_to_update] = not user['card']['visibility']\
-        [element_to_update]
-
-        keyboard = [
-            [InlineKeyboardButton("БИО", callback_data="bio")],
-            [InlineKeyboardButton("Профессия", callback_data="prof"),
-             InlineKeyboardButton("Здоровье", callback_data="heal"),
-             InlineKeyboardButton("Фобия", callback_data="phob")],
-            [InlineKeyboardButton("Хобби", callback_data="hobb"),
-             InlineKeyboardButton("Факт", callback_data="fact"),
-             InlineKeyboardButton("Багаж", callback_data="bagg")],
-            [InlineKeyboardButton("Карта №1", callback_data="card1"),
-             InlineKeyboardButton("Карта №2", callback_data="card2")],
-        ]
+        user['card']['visibility'][element_to_update] = not \
+            user['card']['visibility'][element_to_update]
 
         message_id = user['card_message_id']
-        reply_markup = InlineKeyboardMarkup(keyboard)
+        reply_markup = get_card_keyboard()
 
         new_message_text = generate_message_text(user['card']['chars'], user['card']['visibility'])
 
@@ -416,30 +418,19 @@ def update_visible_callback(call):
 
         bot.answer_callback_query(call.id, text="Статус карты обновлён ✅", show_alert=False)
 
-        with open('database.json', 'w', encoding='utf-8') as database_file:
-            json.dump(database, database_file, ensure_ascii=False, indent=4)
+        with open('database.json', 'w', encoding='utf-8') as file:
+            json.dump(database, file, ensure_ascii=False, indent=4)
 
 def call_command(chat_id, message_id):
     user = next((user for user in database['players_card'] if user['card_message_id'] == message_id), None)
 
     if user:
         new_message_text = generate_message_text(user['card']['chars'], user['card']['visibility'])
-        keyboard = [
-            [InlineKeyboardButton("БИО", callback_data="bio")],
-            [InlineKeyboardButton("Профессия", callback_data="prof"),
-             InlineKeyboardButton("Здоровье", callback_data="heal"),
-             InlineKeyboardButton("Фобия", callback_data="phob")],
-            [InlineKeyboardButton("Хобби", callback_data="hobb"),
-             InlineKeyboardButton("Факт", callback_data="fact"),
-             InlineKeyboardButton("Багаж", callback_data="bagg")],
-            [InlineKeyboardButton("Карта №1", callback_data="card1"),
-             InlineKeyboardButton("Карта №2", callback_data="card2")],
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
+        reply_markup = get_card_keyboard()
         try:
             bot.edit_message_text(new_message_text, chat_id, message_id, parse_mode='HTML', reply_markup=reply_markup)
         except Exception as e:
-            print(f"Ошибка при обновлении сообщения: {e}")
+            print(f"Ошибка call_command: {e}")
     else:
         print("Пользователь не найден 🚫🔍")
 
@@ -533,8 +524,8 @@ def global_command(message):
         if not admin_in_players:
             bot.send_message(admin_id, message_text, parse_mode='HTML', reply_markup=keyboard)
 
-        with open('database.json', 'w', encoding='utf-8') as database_file:
-            json.dump(database, database_file, ensure_ascii=False, indent=4)
+        with open('database.json', 'w', encoding='utf-8') as file:
+            json.dump(database, file, ensure_ascii=False, indent=4)
     else:
         send_subscription_message(message.chat.id)
 
@@ -636,15 +627,16 @@ def gen_command(message):
                 return
 
             message_text = "🖐 Выберите игрока (-ов):"
-            keyboard = []
+            player_buttons = [
+                [InlineKeyboardButton(database['all_users'].get(str(p_id), "Игрок"), callback_data=f"generate_{p_id}")]
+                for p_id in database['inthegame']
+            ]
 
-            keyboard.append([InlineKeyboardButton("Всем", callback_data="generate_all")])
-
-            for player_id in database['inthegame']:
-                player_name = database['all_users'].get(str(player_id), "Неизвестный игрок")
-                keyboard.append([InlineKeyboardButton(player_name, callback_data=f"generate_{player_id}")])
-
-            keyboard.append([InlineKeyboardButton("❌ Отмена ❌", callback_data="cancel_generate")])
+            keyboard = [
+                [InlineKeyboardButton("Всем", callback_data="generate_all")],
+                *player_buttons,
+                [InlineKeyboardButton("❌ Отмена ❌", callback_data="cancel_generate")]
+            ]
 
             reply_markup = InlineKeyboardMarkup(keyboard)
             bot.send_message(message.chat.id, message_text, reply_markup=reply_markup)
@@ -738,8 +730,8 @@ def update_characteristics(player, char):
 
     call_command(player['id'], player['card_message_id'])
 
-    with open('database.json', 'w', encoding='utf-8') as database_file:
-        json.dump(database, database_file, ensure_ascii=False, indent=4)
+    with open('database.json', 'w', encoding='utf-8') as file:
+        json.dump(database, file, ensure_ascii=False, indent=4)
 
 @bot.message_handler(commands=['swap'])
 def swap_command(message):
@@ -800,11 +792,21 @@ def handle_select_player1_callback(call):
 
     for player_id in database['inthegame']:
         player_name = database['all_users'].get(str(player_id), "Неизвестный игрок")
-        keyboard.append([InlineKeyboardButton(player_name, callback_data=f"select_player2_{char}_{player1_id}_{player_id}")])
+        keyboard.append([InlineKeyboardButton(player_name,
+                                              callback_data=f"select_player2_{char}_{player1_id}_{player_id}")])
 
     keyboard.append([InlineKeyboardButton("❌ Отмена ❌", callback_data="cancel_swap")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     bot.edit_message_text(message_text, chat_id, call.message.message_id, reply_markup=reply_markup)
+
+def get_gendered_text(array_data, item_index, gender):
+    options = array_data.get(str(item_index))
+    if not options:
+        return "Неизвестно"
+
+    if gender != 'М' and len(options) > 1:
+        return options[1]
+    return options[0]
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('select_player2_'))
 def handle_select_player2_callback(call):
@@ -814,9 +816,9 @@ def handle_select_player2_callback(call):
     player2_id = int(data[4])
     chat_id_sender = call.message.chat.id
 
-    player1 = next((player for player in database['players_card'] if \
+    player1 = next((player for player in database['players_card'] if
                     player['id'] == player1_id), None)
-    player2 = next((player for player in database['players_card'] if \
+    player2 = next((player for player in database['players_card'] if
                     player['id'] == player2_id), None)
 
     if player1_id == player2_id:
@@ -995,8 +997,8 @@ def fer_command(message):
             reply_markup = InlineKeyboardMarkup(keyboard)
             bot.send_message(message.chat.id, message_text, reply_markup=reply_markup)
 
-            with open('database.json', 'w', encoding='utf-8') as database_file:
-                json.dump(database, database_file, ensure_ascii=False, indent=4)
+            with open('database.json', 'w', encoding='utf-8') as file:
+                json.dump(database, file, ensure_ascii=False, indent=4)
         else:
             bot.send_message(message.chat.id, "У вас нет разрешения на выполнение \
             этой команды 🔐🚫")
@@ -1012,7 +1014,8 @@ def remove_fertility_callback(call):
             fertility_status = player['card']['chars']['bio']['fertility']
 
             if ", неспособна рожать" in fertility_status or ", неспособен оплодотворять" in fertility_status:
-                bot.edit_message_text("Последствия старости никак не убрать 👴🏻", call.message.chat.id, call.message.message_id)
+                bot.edit_message_text("Последствия старости никак не убрать 👴🏻", call.message.chat.id,
+                                      call.message.message_id)
             elif fertility_status == "":
                 bot.edit_message_text("Менять нечего 🤰🏻💢", call.message.chat.id, call.message.message_id)
             else:
@@ -1061,7 +1064,10 @@ def shuffle_command(message):
                     if gender == 'М':
                         new_prof = array_prof[str(new_prof_index)][0]
                     else:
-                        new_prof = array_prof[str(new_prof_index)][1] if len(array_prof[str(new_prof_index)]) > 1 else array_prof[str(new_prof_index)][0]
+                        if len(array_prof[str(new_prof_index)]) > 1:
+                            new_prof = array_prof[str(new_prof_index)][1]
+                        else:
+                            new_prof = array_prof[str(new_prof_index)][0]
 
                     player["card"]["indexes"]["prof"] = new_prof_index
                     player["card"]["chars"]["prof"] = new_prof
@@ -1074,7 +1080,8 @@ def shuffle_command(message):
                     try:
                         call_command(player['id'], player['card_message_id'])
                     except Exception as e:
-                        bot.send_message(message.chat.id, f"Ошибка при обновлении карточки игрока {player['name']}: {str(e)} ⚠")
+                        bot.send_message(message.chat.id,
+                                         f"Ошибка при обновлении карточки игрока {player['name']}: {str(e)} ⚠")
 
             bot.send_message(message.chat.id, "Профессии успешно перемешаны с учётом пола ♻")
         else:
@@ -1244,64 +1251,62 @@ def send_subscription_message(chat_id):
         reply_markup=keyboard
     )
 
-DEEPSEEKTOKEN='io-v2-eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJvd25lciI6Ijg4ZTQ0ZGI5LWI0ZTMtNGNmNy1hMjRlLWVjNTRjOGEzNWIzNiIsImV4cCI6NDkwMzU5MTY1MH0.MDnkcp6NPlA1yt7744rglcd1Ig5mVaH_JxK5AWG-kX9PpJWrMH_AK4XLnAhermds1BvdApWNaZC2DYthfF4SJQ'
-
-@bot.message_handler(commands=["finish"])
-def finish_handler(message):
-    try:
-        with open("database.json", "r", encoding="utf-8") as f:
-            db = json.load(f)
-
-        players_data = []
-        for player in db.get("players_card", []):
-            card = player["card"]["chars"]
-            bio = card["bio"]
-            player_data = [
-                bio["gender_name"],
-                f"{bio['age']} {bio['years']}",
-                card["prof"],
-                f"{bio['age_work']} {bio['years_work']}",
-                card["heal"],
-                card["phob"],
-                card["hobb"],
-                card["fact"],
-                card["bagg"]
-            ]
-            players_data.append(player_data)
-
-        prompt = (
-            "Игра Бункер. Катастрофа: зомби-апокалипсис. Проанализируй персонажей и выдай краткий общий итог в первой строке: победа или поражение группы. "
-            "Затем дай краткий связный текст в 2 абзацах о том, кто внёс вклад в выживание, а кто мешал. Не пиши размышления. Не разделяй игроков. Не пиши длинно.\n\n"
-        )
-        for i, pdata in enumerate(players_data, 1):
-            prompt += f"Игрок {i}: {', '.join(pdata)}\n"
-
-        url = "https://api.intelligence.io.solutions/api/v1/chat/completions"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {DEEPSEEKTOKEN}"
-        }
-
-        data = {
-            "model": "deepseek-ai/DeepSeek-R1-0528",
-            "messages": [
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt}
-            ]
-        }
-
-        response = requests.post(url, headers=headers, json=data)
-        response.raise_for_status()
-        result = response.json()
-
-        full_response = result["choices"][0]["message"]["content"]
-
-        if "</think>" in full_response:
-            full_response = full_response.split("</think>")[-1].strip()
-
-        bot.send_message(message.chat.id, full_response)
-
-    except Exception as e:
-        bot.send_message(message.chat.id, f"⚠️ Ошибка: {str(e)}")
+# @bot.message_handler(commands=["finish"])
+# def finish_handler(message):
+#     try:
+#         with open("database.json", "r", encoding="utf-8") as f:
+#             db = json.load(f)
+#
+#         players_data = []
+#         for player in db.get("players_card", []):
+#             card = player["card"]["chars"]
+#             bio = card["bio"]
+#             player_data = [
+#                 bio["gender_name"],
+#                 f"{bio['age']} {bio['years']}",
+#                 card["prof"],
+#                 f"{bio['age_work']} {bio['years_work']}",
+#                 card["heal"],
+#                 card["phob"],
+#                 card["hobb"],
+#                 card["fact"],
+#                 card["bagg"]
+#             ]
+#             players_data.append(player_data)
+#
+#         prompt = (
+#             "Игра Бункер. Катастрофа: зомби-апокалипсис. Проанализируй персонажей и выдай краткий общий итог в первой строке: победа или поражение группы. "
+#             "Затем дай краткий связный текст в 2 абзацах о том, кто внёс вклад в выживание, а кто мешал. Не пиши размышления. Не разделяй игроков. Не пиши длинно.\n\n"
+#         )
+#         for i, pdata in enumerate(players_data, 1):
+#             prompt += f"Игрок {i}: {', '.join(pdata)}\n"
+#
+#         url = "https://api.intelligence.io.solutions/api/v1/chat/completions"
+#         headers = {
+#             "Content-Type": "application/json",
+#             "Authorization": f"Bearer {DEEPSEEKTOKEN}"
+#         }
+#
+#         data = {
+#             "model": "deepseek-ai/DeepSeek-R1-0528",
+#             "messages": [
+#                 {"role": "system", "content": "You are a helpful assistant."},
+#                 {"role": "user", "content": prompt}
+#             ]
+#         }
+#
+#         response = requests.post(url, headers=headers, json=data)
+#         response.raise_for_status()
+#         result = response.json()
+#
+#         full_response = result["choices"][0]["message"]["content"]
+#
+#         if "</think>" in full_response:
+#             full_response = full_response.split("</think>")[-1].strip()
+#
+#         bot.send_message(message.chat.id, full_response)
+#
+#     except Exception as e:
+#         bot.send_message(message.chat.id, f"⚠️ Ошибка: {str(e)}")
 
 bot.polling()
