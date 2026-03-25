@@ -325,6 +325,8 @@ def get_card():
 def play_command(message):
     user_id = message.from_user.id
     if check_subscription(user_id):
+        with suppress(Exception):
+            bot.delete_message(message.chat.id, message.message_id)
         if message.chat.id == 833674307:
             if user_id not in database['inthegame']:
                 database['inthegame'].append(user_id)
@@ -654,6 +656,8 @@ def update_table_message(call):
 def gen_command(message):
     user_id = message.from_user.id
     if check_subscription(user_id):
+        with suppress(Exception):
+            bot.delete_message(message.chat.id, message.message_id)
         if message.chat.id == 833674307:
             sender_id = message.from_user.id
             admin_id = 833674307
@@ -775,6 +779,8 @@ def update_characteristics(player, char):
 def swap_command(message):
     user_id = message.from_user.id
     if check_subscription(user_id):
+        with suppress(Exception):
+            bot.delete_message(message.chat.id, message.message_id)
         if message.chat.id == 833674307:
             sender_id = message.from_user.id
             admin_id = 833674307
@@ -1016,6 +1022,8 @@ def id_command(message):
 def fer_command(message):
     user_id = message.from_user.id
     if check_subscription(user_id):
+        with suppress(Exception):
+            bot.delete_message(message.chat.id, message.message_id)
         if message.chat.id == 833674307:
             sender_id = message.from_user.id
             admin_id = 833674307
@@ -1074,6 +1082,8 @@ def cancel_fertility_callback(call):
 def shuffle_command(message):
     user_id = message.from_user.id
     if check_subscription(user_id):
+        with suppress(Exception):
+            bot.delete_message(message.chat.id, message.message_id)
         if message.chat.id == 833674307:
             ids_in_game = database['inthegame']
 
