@@ -488,8 +488,8 @@ def generate_message_text(card_data, visibility):
 
     return message_text
 
-@bot.message_handler(commands=['global'])
-def global_command(message):
+@bot.message_handler(commands=['table'])
+def table_command(message):
     user_id = message.from_user.id
     if check_subscription(user_id):
         with suppress(Exception):
@@ -502,7 +502,7 @@ def global_command(message):
             bot.send_message(message.chat.id, "Вы не в игре 😕📛")
             return
 
-        message_text = generate_global_message_text()
+        message_text = generate_table_message_text()
         keyboard = InlineKeyboardMarkup()
         update_button = InlineKeyboardButton(text="Обновить", callback_data="update_message")
         keyboard.add(update_button)
@@ -533,8 +533,8 @@ def global_command(message):
     else:
         send_subscription_message(message.chat.id)
 
-def generate_global_message_text():
-    message_text = "📇 <u><b>КАРТЫ ВСЕХ ИГРОКОВ</b></u> 📝\n"
+def generate_table_message_text():
+    message_text = "📋 <b>ОБЩИЙ СТОЛ</b> 📜\n"
 
     for user in database['players_card']:
         user_name = user['name']
@@ -597,27 +597,46 @@ def generate_global_message_text():
 
     return message_text
 
-
 @bot.callback_query_handler(func=lambda call: call.data == "update_message")
-def update_global_message(call):
+def update_table_message(call):
     user_id = call.from_user.id
 
     if check_subscription(user_id):
-        message_text = generate_global_message_text()
+        message_text = generate_table_message_text()
         keyboard = InlineKeyboardMarkup()
         update_button = InlineKeyboardButton(text="Обновить", callback_data="update_message")
         keyboard.add(update_button)
 
-        with suppress(Exception):
-            bot.edit_message_text(
-                message_text,
-                chat_id=user_id,
-                message_id=call.message.message_id,
-                parse_mode="HTML",
-                reply_markup=keyboard
-            )
+        for user in database['players_card']:
+            player_id = user['id']
+            prev_message_id = user.get('common_message_id')
+
+            if prev_message_id:
+                with suppress(Exception):
+                    bot.edit_message_text(
+                        message_text,
+                        chat_id=player_id,
+                        message_id=prev_message_id,
+                        parse_mode="HTML",
+                        reply_markup=keyboard
+                    )
+
+        admin_id = 833674307
+        admin_in_players = any(user['id'] == admin_id for user in database['players_card'])
+        if user_id == admin_id and not admin_in_players:
+            with suppress(Exception):
+                bot.edit_message_text(
+                    message_text,
+                    chat_id=user_id,
+                    message_id=call.message.message_id,
+                    parse_mode="HTML",
+                    reply_markup=keyboard
+                )
+
+        bot.answer_callback_query(call.id, "Общий стол обновлен для всех игроков! ✅")
+
     else:
-        bot.answer_callback_query(call.id, "Чтобы обновить сообщение, подпишитесь на канал 📛")
+        bot.answer_callback_query(call.id, "Чтобы обновить сообщение, подпишитесь на канал 📛", show_alert=True)
 
 @bot.message_handler(commands=['generate'])
 def gen_command(message):
