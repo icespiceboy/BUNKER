@@ -674,7 +674,7 @@ def gen_command(message):
             keyboard = [
                 [InlineKeyboardButton("Всем", callback_data="generate_all")],
                 *player_buttons,
-                [InlineKeyboardButton("❌ Отмена ❌", callback_data="cancel_generate")]
+                [InlineKeyboardButton("Отменить ❌", callback_data="cancel_generate")]
             ]
 
             reply_markup = InlineKeyboardMarkup(keyboard)
@@ -701,7 +701,7 @@ def handle_generate_callback(call):
             [InlineKeyboardButton("Хобби", callback_data="char_hobb_all")],
             [InlineKeyboardButton("Факт", callback_data="char_fact_all")],
             [InlineKeyboardButton("Багаж", callback_data="char_bagg_all")],
-            [InlineKeyboardButton("❌ Отмена ❌", callback_data="cancel_generate")]
+            [InlineKeyboardButton("Отменить ❌", callback_data="cancel_generate")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         bot.edit_message_text(message_text, chat_id, call.message.message_id, reply_markup=reply_markup)
@@ -716,7 +716,7 @@ def handle_generate_callback(call):
             [InlineKeyboardButton("Хобби", callback_data=f"char_hobb_{player_id}")],
             [InlineKeyboardButton("Факт", callback_data=f"char_fact_{player_id}")],
             [InlineKeyboardButton("Багаж", callback_data=f"char_bagg_{player_id}")],
-            [InlineKeyboardButton("❌ Отмена ❌", callback_data="cancel_generate")]
+            [InlineKeyboardButton("Отменить ❌", callback_data="cancel_generate")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         bot.edit_message_text(message_text, chat_id, call.message.message_id, reply_markup=reply_markup)
@@ -796,7 +796,7 @@ def swap_command(message):
                 [InlineKeyboardButton("Хобби", callback_data="swap_char_hobb")],
                 [InlineKeyboardButton("Факт", callback_data="swap_char_fact")],
                 [InlineKeyboardButton("Багаж", callback_data="swap_char_bagg")],
-                [InlineKeyboardButton("❌ Отмена ❌", callback_data="cancel_swap")]
+                [InlineKeyboardButton("Отменить ❌", callback_data="cancel_swap")]
             ]
 
             reply_markup = InlineKeyboardMarkup(keyboard)
@@ -822,7 +822,7 @@ def handle_swap_char_callback(call):
         player_name = database['all_users'].get(str(player_id), "Неизвестный игрок")
         keyboard.append([InlineKeyboardButton(player_name, callback_data=f"select_player1_{char}_{player_id}")])
 
-    keyboard.append([InlineKeyboardButton("❌ Отмена ❌", callback_data="cancel_swap")])
+    keyboard.append([InlineKeyboardButton("Отменить ❌", callback_data="cancel_swap")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     bot.edit_message_text(message_text, chat_id, call.message.message_id, reply_markup=reply_markup)
 
@@ -841,7 +841,7 @@ def handle_select_player1_callback(call):
         keyboard.append([InlineKeyboardButton(player_name,
                                               callback_data=f"select_player2_{char}_{player1_id}_{player_id}")])
 
-    keyboard.append([InlineKeyboardButton("❌ Отмена ❌", callback_data="cancel_swap")])
+    keyboard.append([InlineKeyboardButton("Отменить ❌", callback_data="cancel_swap")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     bot.edit_message_text(message_text, chat_id, call.message.message_id, reply_markup=reply_markup)
 
@@ -970,7 +970,7 @@ def kick_command(message):
                 player_name = database['all_users'].get(str(player_id), "Неизвестный игрок")
                 keyboard.append([InlineKeyboardButton(player_name, callback_data=f"kick_player_{player_id}")])
 
-            keyboard.append([InlineKeyboardButton("❌ Отмена ❌", callback_data="cancel_kick")])
+            keyboard.append([InlineKeyboardButton("Отменить ❌", callback_data="cancel_kick")])
             reply_markup = InlineKeyboardMarkup(keyboard)
             bot.send_message(message.chat.id, message_text, reply_markup=reply_markup)
         else:
@@ -1038,7 +1038,7 @@ def fer_command(message):
                 player_name = database['all_users'].get(str(player_id), "Unknown")
                 keyboard.append([InlineKeyboardButton(player_name, callback_data=f"remove_fertility_{player_id}")])
 
-            keyboard.append([InlineKeyboardButton("❌ Отмена ❌", callback_data="cancel_fertility")])
+            keyboard.append([InlineKeyboardButton("Отменить ❌", callback_data="cancel_fertility")])
 
             reply_markup = InlineKeyboardMarkup(keyboard)
             bot.send_message(message.chat.id, message_text, reply_markup=reply_markup)
