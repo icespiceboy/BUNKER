@@ -1,7 +1,6 @@
 import json
 import random
 import os
-import requests
 from dotenv import load_dotenv
 from contextlib import suppress
 import telebot
@@ -1116,7 +1115,8 @@ def shuffle_command(message):
 def card_command(message):
     user_id = message.from_user.id
     if check_subscription(user_id):
-        user_id = message.from_user.id
+        with suppress(Exception):
+            bot.delete_message(message.chat.id, message.message_id)
         user = next((player for player in database['players_card'] if player['id'] == user_id), None)
 
         if not user:
