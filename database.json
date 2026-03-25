@@ -60,16 +60,16 @@
                 "visibility": {
                     "bio": false,
                     "prof": false,
-                    "heal": false,
+                    "heal": true,
                     "phob": false,
                     "hobb": true,
-                    "fact": false,
+                    "fact": true,
                     "bagg": false,
-                    "card1": false,
-                    "card2": false
+                    "card1": true,
+                    "card2": true
                 }
             },
-            "card_message_id": 12939,
+            "card_message_id": 12951,
             "common_message_id": 12935
         },
         {
