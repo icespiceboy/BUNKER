@@ -5,35 +5,32 @@ from dotenv import load_dotenv
 from contextlib import suppress
 import telebot
 from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
+import logging
+
+with open('database.json', 'r', encoding='utf-8') as db_in:
+    database = json.load(db_in)
+
+def save_database():
+    with open('database.json', 'w', encoding='utf-8') as f:
+        json.dump(database, f, ensure_ascii=False, indent=4)
+
+def load_json(filename):
+    with open(filename, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+
+professions = load_json('array_prof.json')
+healths = load_json('array_heal.json')
+phobias = load_json('array_phob.json')
+hobbies = load_json('array_hobb.json')
+facts = load_json('array_fact.json')
+baggages = load_json('array_bagg.json')
+cards = load_json('array_card.json')
 
 load_dotenv()
-
-with open('database.json', 'r', encoding='utf-8') as database_file:
-    database = json.load(database_file)
-
-with open('array_prof.json', 'r', encoding='utf-8') as prof_file:
-    professions = json.load(prof_file)
-
-with open('array_heal.json', 'r', encoding='utf-8') as heal_file:
-    healths = json.load(heal_file)
-
-with open('array_phob.json', 'r', encoding='utf-8') as phob_file:
-    phobias = json.load(phob_file)
-
-with open('array_hobb.json', 'r', encoding='utf-8') as hobb_file:
-    hobbies = json.load(hobb_file)
-
-with open('array_fact.json', 'r', encoding='utf-8') as fact_file:
-    facts = json.load(fact_file)
-
-with open('array_bagg.json', 'r', encoding='utf-8') as bagg_file:
-    baggages = json.load(bagg_file)
-
-with open('array_card.json', 'r', encoding='utf-8') as card_file:
-    cards = json.load(card_file)
-
 CHANNEL_ID = '@bunkernewss'
 bot = telebot.TeleBot(os.getenv('TELEGRAMTOKEN'))
+
 
 def check_subscription(user_id):
     try:
@@ -43,6 +40,7 @@ def check_subscription(user_id):
         print(f"Ошибка check_subscription: {e}")
         return False
 
+
 @bot.message_handler(commands=['start'])
 def start_command(message):
     user_id = message.from_user.id
@@ -50,8 +48,8 @@ def start_command(message):
     if str(user_id) not in database['all_users']:
         database['all_users'][str(user_id)] = user_name
 
-        with open('database.json', 'w', encoding='utf-8') as file:
-            json.dump(database, file, ensure_ascii=False, indent=4)
+        save_database()
+
 
 def get_years(age):
     last_digit = age % 10
@@ -62,6 +60,7 @@ def get_years(age):
     else:
         return 'года'
 
+
 def get_years_work(age_work):
     last_digit = age_work % 10
     if 10 < age_work < 20 or last_digit == 0 or 5 <= last_digit <= 9:
@@ -70,6 +69,7 @@ def get_years_work(age_work):
         return 'год'
     else:
         return 'года'
+
 
 def get_profession(gender):
     used_professions = database['used']['professions']
@@ -86,6 +86,7 @@ def get_profession(gender):
                     profession = professions[profession_index][0]
             used_professions.append(profession_index)
             return profession, profession_index
+
 
 def get_health(gender):
     used_healths = database['used']['healths']
@@ -158,9 +159,10 @@ def get_health(gender):
                                     "(Степень тяжести - 100%)",
                                     "(Степень тяжести - ремиссия)",
                                     "(Степень тяжести - ремиссия)"
-                                    ])
+                                ])
 
     return health, health_status, health_index
+
 
 def get_phobia():
     used_phobias = database['used']['phobias']
@@ -174,6 +176,7 @@ def get_phobia():
 
     return phobia, phobia_index
 
+
 def get_hobby():
     used_hobbies = database['used']['hobbies']
 
@@ -186,6 +189,7 @@ def get_hobby():
 
     return hobby, hobby_index
 
+
 def get_fact(gender):
     used_facts = database['used']['facts']
 
@@ -195,6 +199,7 @@ def get_fact(gender):
             fact = facts[fact_index][0] if gender == "М" else facts[fact_index][1]
             used_facts.append(fact_index)
             return fact, fact_index
+
 
 def get_baggage():
     used_baggages = database['used']['baggages']
@@ -207,6 +212,7 @@ def get_baggage():
             break
 
     return baggage, baggage_index
+
 
 def get_card():
     random1 = random.random()
@@ -314,6 +320,7 @@ def get_card():
 
     return card_data
 
+
 @bot.message_handler(commands=['play'])
 def play_command(message):
     user_id = message.from_user.id
@@ -324,13 +331,13 @@ def play_command(message):
 
             database['players_card'] = []
             database['used'] = {
-              'professions': [],
-              'healths': [],
-              'phobias': [],
-              'hobbies': [],
-              'facts': [],
-              'baggages': [],
-              'cards': []
+                'professions': [],
+                'healths': [],
+                'phobias': [],
+                'hobbies': [],
+                'facts': [],
+                'baggages': [],
+                'cards': []
             }
 
             user_ordinal = 1
@@ -355,10 +362,10 @@ def play_command(message):
         else:
             bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой команды 🔐🚫")
 
-        with open('database.json', 'w', encoding='utf-8') as file:
-            json.dump(database, file, ensure_ascii=False, indent=4)
+        save_database()
     else:
         send_subscription_message(message.chat.id)
+
 
 def get_card_keyboard():
     keyboard = [
@@ -373,6 +380,7 @@ def get_card_keyboard():
          InlineKeyboardButton("Карта №2", callback_data="card2")]
     ]
     return InlineKeyboardMarkup(keyboard)
+
 
 def send_generated_card(user_id, card_data):
     bio_data = card_data.get('chars').get('bio')
@@ -399,6 +407,7 @@ def send_generated_card(user_id, card_data):
 
     return sent_message
 
+
 @bot.callback_query_handler(func=lambda call: call.data in ["bio", "prof", "heal", "phob", "hobb", "fact", "bagg",
                                                             "card1", "card2"])
 def update_visible_callback(call):
@@ -421,8 +430,8 @@ def update_visible_callback(call):
 
         bot.answer_callback_query(call.id, text="Статус карты обновлён ✅", show_alert=False)
 
-        with open('database.json', 'w', encoding='utf-8') as file:
-            json.dump(database, file, ensure_ascii=False, indent=4)
+        save_database()
+
 
 def call_command(chat_id, message_id):
     user = next((user for user in database['players_card'] if user['card_message_id'] == message_id), None)
@@ -436,6 +445,7 @@ def call_command(chat_id, message_id):
             print(f"Ошибка call_command: {e}")
     else:
         print("Пользователь не найден 🚫🔍")
+
 
 def generate_message_text(card_data, visibility):
     visibility_symbols = {
@@ -487,6 +497,7 @@ def generate_message_text(card_data, visibility):
 
     return message_text
 
+
 @bot.message_handler(commands=['table'])
 def table_command(message):
     user_id = message.from_user.id
@@ -527,10 +538,10 @@ def table_command(message):
         if not admin_in_players:
             bot.send_message(admin_id, message_text, parse_mode='HTML', reply_markup=keyboard)
 
-        with open('database.json', 'w', encoding='utf-8') as file:
-            json.dump(database, file, ensure_ascii=False, indent=4)
+        save_database()
     else:
         send_subscription_message(message.chat.id)
+
 
 def generate_table_message_text():
     message_text = "📋 <b>ОБЩИЙ СТОЛ</b> 📜\n"
@@ -596,6 +607,7 @@ def generate_table_message_text():
 
     return message_text
 
+
 @bot.callback_query_handler(func=lambda call: call.data == "update_message")
 def update_table_message(call):
     user_id = call.from_user.id
@@ -637,6 +649,7 @@ def update_table_message(call):
     else:
         bot.answer_callback_query(call.id, "Чтобы обновить сообщение, подпишитесь на канал 📛", show_alert=True)
 
+
 @bot.message_handler(commands=['generate'])
 def gen_command(message):
     user_id = message.from_user.id
@@ -666,6 +679,7 @@ def gen_command(message):
             bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой команды 🔐🚫")
     else:
         send_subscription_message(message.chat.id)
+
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('generate_') or call.data == "cancel_generate")
 def handle_generate_callback(call):
@@ -703,6 +717,7 @@ def handle_generate_callback(call):
         reply_markup = InlineKeyboardMarkup(keyboard)
         bot.edit_message_text(message_text, chat_id, call.message.message_id, reply_markup=reply_markup)
 
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith('char_'))
 def handle_char_callback(call):
     data = call.data.split('_')
@@ -721,6 +736,7 @@ def handle_char_callback(call):
             bot.edit_message_text("Характеристика сгенерирована ♻", call.message.chat.id, call.message.message_id)
         else:
             bot.send_message(call.message.chat.id, "Игрок не найден 🚫🔍")
+
 
 def update_characteristics(player, char):
     gender = player['card']['chars']['bio']['gender']
@@ -752,8 +768,8 @@ def update_characteristics(player, char):
 
     call_command(player['id'], player['card_message_id'])
 
-    with open('database.json', 'w', encoding='utf-8') as file:
-        json.dump(database, file, ensure_ascii=False, indent=4)
+    save_database()
+
 
 @bot.message_handler(commands=['swap'])
 def swap_command(message):
@@ -784,6 +800,7 @@ def swap_command(message):
     else:
         send_subscription_message(message.chat.id)
 
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith('swap_char_') or call.data == "cancel_swap")
 def handle_swap_char_callback(call):
     if call.data == "cancel_swap":
@@ -803,6 +820,7 @@ def handle_swap_char_callback(call):
     reply_markup = InlineKeyboardMarkup(keyboard)
     bot.edit_message_text(message_text, chat_id, call.message.message_id, reply_markup=reply_markup)
 
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith('select_player1_'))
 def handle_select_player1_callback(call):
     data = call.data.split('_')
@@ -821,6 +839,7 @@ def handle_select_player1_callback(call):
     reply_markup = InlineKeyboardMarkup(keyboard)
     bot.edit_message_text(message_text, chat_id, call.message.message_id, reply_markup=reply_markup)
 
+
 def get_gendered_text(array_data, item_index, gender):
     options = array_data.get(str(item_index))
     if not options:
@@ -829,6 +848,7 @@ def get_gendered_text(array_data, item_index, gender):
     if gender != 'М' and len(options) > 1:
         return options[1]
     return options[0]
+
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('select_player2_'))
 def handle_select_player2_callback(call):
@@ -855,23 +875,20 @@ def handle_select_player2_callback(call):
             gender1 = player1['card']['chars']['bio']['gender']
             gender2 = player2['card']['chars']['bio']['gender']
 
-            with open('array_prof.json', 'r', encoding='utf-8') as prof_file:
-                array_prof = json.load(prof_file)
-
             if gender1 == 'М':
-                new_prof1 = array_prof[str(prof_index2)][0]
+                new_prof1 = professions[str(prof_index2)][0]
             else:
-                if len(array_prof[str(prof_index2)]) > 1:
-                    new_prof1 = array_prof[str(prof_index2)][1]
+                if len(professions[str(prof_index2)]) > 1:
+                    new_prof1 = professions[str(prof_index2)][1]
                 else:
-                    new_prof1 = array_prof[str(prof_index2)][0]
+                    new_prof1 = professions[str(prof_index2)][0]
             if gender2 == 'М':
-                new_prof2 = array_prof[str(prof_index1)][0]
+                new_prof2 = professions[str(prof_index1)][0]
             else:
-                if len(array_prof[str(prof_index1)]) > 1:
-                    new_prof2 = array_prof[str(prof_index1)][1]
+                if len(professions[str(prof_index1)]) > 1:
+                    new_prof2 = professions[str(prof_index1)][1]
                 else:
-                    new_prof2 = array_prof[str(prof_index1)][0]
+                    new_prof2 = professions[str(prof_index1)][0]
 
             player1['card']['chars']['prof'] = new_prof1
             player1['card']['indexes']['prof'] = prof_index2
@@ -895,23 +912,20 @@ def handle_select_player2_callback(call):
             gender1 = player1['card']['chars']['bio']['gender']
             gender2 = player2['card']['chars']['bio']['gender']
 
-            with open('array_fact.json', 'r', encoding='utf-8') as fact_file:
-                array_fact = json.load(fact_file)
-
             if gender1 == 'М':
-                new_fact1 = array_fact[str(fact_index2)][0]
+                new_fact1 = facts[str(fact_index2)][0]
             else:
-                if len(array_fact[str(fact_index2)]) > 1:
-                    new_fact1 = array_fact[str(fact_index2)][1]
+                if len(facts[str(fact_index2)]) > 1:
+                    new_fact1 = facts[str(fact_index2)][1]
                 else:
-                    new_fact1 = array_fact[str(fact_index2)][0]
+                    new_fact1 = facts[str(fact_index2)][0]
             if gender2 == 'М':
-                new_fact2 = array_fact[str(fact_index1)][0]
+                new_fact2 = facts[str(fact_index1)][0]
             else:
-                if len(array_fact[str(fact_index1)]) > 1:
-                    new_fact2 = array_fact[str(fact_index1)][1]
+                if len(facts[str(fact_index1)]) > 1:
+                    new_fact2 = facts[str(fact_index1)][1]
                 else:
-                    new_fact2 = array_fact[str(fact_index1)][0]
+                    new_fact2 = facts[str(fact_index1)][0]
 
             player1['card']['chars']['fact'] = new_fact1
             player1['card']['indexes']['fact'] = fact_index2
@@ -922,8 +936,7 @@ def handle_select_player2_callback(call):
             player1['card']['chars']['bagg'] = player2['card']['chars']['bagg']
             player2['card']['chars']['bagg'] = temp
 
-        with open('database.json', 'w', encoding='utf-8') as database_file:
-            json.dump(database, database_file, ensure_ascii=False, indent=4)
+        save_database()
 
         call_command(player1_id, player1['card_message_id'])
         call_command(player2_id, player2['card_message_id'])
@@ -931,6 +944,7 @@ def handle_select_player2_callback(call):
         bot.edit_message_text("Харакетристики обменяты ♻", call.message.chat.id, call.message.message_id)
     else:
         bot.send_message(chat_id_sender, "Один или оба игрока не найдены 🚫🔍")
+
 
 @bot.message_handler(commands=['kick'])
 def kick_command(message):
@@ -958,6 +972,7 @@ def kick_command(message):
     else:
         send_subscription_message(message.chat.id)
 
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith('kick_player_') or call.data == "cancel_kick")
 def handle_kick_callback(call):
     if call.data == "cancel_kick":
@@ -982,8 +997,8 @@ def handle_kick_callback(call):
     else:
         bot.edit_message_text("Игрок не найден 🚫🔍", call.message.chat.id, call.message.message_id)
 
-    with open('database.json', 'w', encoding='utf-8') as database_file:
-        json.dump(database, database_file, ensure_ascii=False, indent=4)
+    save_database()
+
 
 @bot.message_handler(commands=['id'])
 def id_command(message):
@@ -995,6 +1010,7 @@ def id_command(message):
         bot.send_message(chat_id, f"🔹 Ваш id: <code>{chat_id}</code>", parse_mode='HTML')
     else:
         send_subscription_message(message.chat.id)
+
 
 @bot.message_handler(commands=['fertility'])
 def fer_command(message):
@@ -1019,13 +1035,13 @@ def fer_command(message):
             reply_markup = InlineKeyboardMarkup(keyboard)
             bot.send_message(message.chat.id, message_text, reply_markup=reply_markup)
 
-            with open('database.json', 'w', encoding='utf-8') as file:
-                json.dump(database, file, ensure_ascii=False, indent=4)
+            save_database()
         else:
             bot.send_message(message.chat.id, "У вас нет разрешения на выполнение \
             этой команды 🔐🚫")
     else:
         send_subscription_message(message.chat.id)
+
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('remove_fertility_'))
 def remove_fertility_callback(call):
@@ -1042,16 +1058,17 @@ def remove_fertility_callback(call):
                 bot.edit_message_text("Менять нечего 🤰🏻💢", call.message.chat.id, call.message.message_id)
             else:
                 player['card']['chars']['bio']['fertility'] = ""
-                with open('database.json', 'w', encoding='utf-8') as database_file:
-                    json.dump(database, database_file, ensure_ascii=False, indent=4)
+                save_database()
 
                 call_command(player_id, player['card_message_id'])
                 bot.edit_message_text("Готово, теперь игрок плоден! 🤰🏻", call.message.chat.id, call.message.message_id)
             break
 
+
 @bot.callback_query_handler(func=lambda call: call.data == 'cancel_fertility')
 def cancel_fertility_callback(call):
     bot.edit_message_text("Вы отменили выбор игрока ❌", call.message.chat.id, call.message.message_id)
+
 
 @bot.message_handler(commands=['shuffle'])
 def shuffle_command(message):
@@ -1073,9 +1090,6 @@ def shuffle_command(message):
                 if all(original != shuffled for original, shuffled in zip(original_indexes, shuffled_indexes)):
                     break
 
-            with open('array_prof.json', 'r', encoding='utf-8') as prof_file:
-                array_prof = json.load(prof_file)
-
             for i, player_info in enumerate(player_data):
                 new_prof_index = shuffled_indexes[i]
                 player_id = player_info["id"]
@@ -1084,18 +1098,17 @@ def shuffle_command(message):
                 if player:
                     gender = player["card"]["chars"]["bio"]["gender"]
                     if gender == 'М':
-                        new_prof = array_prof[str(new_prof_index)][0]
+                        new_prof = professions[str(new_prof_index)][0]
                     else:
-                        if len(array_prof[str(new_prof_index)]) > 1:
-                            new_prof = array_prof[str(new_prof_index)][1]
+                        if len(professions[str(new_prof_index)]) > 1:
+                            new_prof = professions[str(new_prof_index)][1]
                         else:
-                            new_prof = array_prof[str(new_prof_index)][0]
+                            new_prof = professions[str(new_prof_index)][0]
 
                     player["card"]["indexes"]["prof"] = new_prof_index
                     player["card"]["chars"]["prof"] = new_prof
 
-            with open('database.json', 'w', encoding='utf-8') as database_file:
-                json.dump(database, database_file, ensure_ascii=False, indent=4)
+            save_database()
 
             for player in database['players_card']:
                 if player['id'] in ids_in_game:
@@ -1110,6 +1123,7 @@ def shuffle_command(message):
             bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой команды 🔐🚫")
     else:
         send_subscription_message(message.chat.id)
+
 
 @bot.message_handler(commands=['card'])
 def card_command(message):
@@ -1143,12 +1157,13 @@ def card_command(message):
 
         user['card_message_id'] = sent_message.message_id
 
-        with open('database.json', 'w', encoding='utf-8') as database_file:
-            json.dump(database, database_file, ensure_ascii=False, indent=4)
+        save_database()
     else:
         send_subscription_message(message.chat.id)
 
+
 nick_selection = {}
+
 
 @bot.message_handler(commands=['setnick'])
 def set_nick_command(message):
@@ -1174,6 +1189,7 @@ def set_nick_command(message):
     else:
         send_subscription_message(message.chat.id)
 
+
 @bot.message_handler(func=lambda msg: nick_selection.get(msg.from_user.id, {}).get('stage') == 'awaiting_nick')
 def receive_nick(message):
     user_id = message.from_user.id
@@ -1195,12 +1211,14 @@ def receive_nick(message):
 
     current_nick = user_data.get('current_nick', "Не установлен")
     bot.edit_message_text(
-        f"💁‍♀️ Сменить ваш текущий никнейм <b>\"{current_nick}\"</b> на новый <b>\"{new_nick}\"</b>?\n\nПодтвердите действие:",
+        f"💁‍♀️ Сменить ваш текущий никнейм <b>\"{current_nick}\"</b> на новый <b>"
+        f"\"{new_nick}\"</b>?\n\nПодтвердите действие:",
         message.chat.id,
         user_data['message_id'],
         reply_markup=keyboard,
         parse_mode='HTML'
     )
+
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("setnick_"))
 def handle_nick_confirmation(call):
@@ -1232,8 +1250,7 @@ def handle_nick_confirmation(call):
                 player['name'] = new_nick
                 break
 
-        with open('database.json', 'w', encoding='utf-8') as db_file:
-            json.dump(database, db_file, ensure_ascii=False, indent=4)
+        save_database()
 
         bot.edit_message_text(
             f'Ваш новый никнейм <b>"{new_nick}"</b> успешно установлен ✅',
@@ -1264,6 +1281,7 @@ def handle_nick_confirmation(call):
         )
         nick_selection.pop(user_id, None)
 
+
 def send_subscription_message(chat_id):
     keyboard = InlineKeyboardMarkup()
     subscribe_button = InlineKeyboardButton(text="Подписаться", url=f"https://t.me/{CHANNEL_ID[1:]}")
@@ -1273,6 +1291,7 @@ def send_subscription_message(chat_id):
         "Чтобы пользоваться этим ботом, вы должны быть подписаны на новостной канал! 😄👇",
         reply_markup=keyboard
     )
+
 
 # @bot.message_handler(commands=["finish"])
 # def finish_handler(message):
@@ -1298,8 +1317,10 @@ def send_subscription_message(chat_id):
 #             players_data.append(player_data)
 #
 #         prompt = (
-#             "Игра Бункер. Катастрофа: зомби-апокалипсис. Проанализируй персонажей и выдай краткий общий итог в первой строке: победа или поражение группы. "
-#             "Затем дай краткий связный текст в 2 абзацах о том, кто внёс вклад в выживание, а кто мешал. Не пиши размышления. Не разделяй игроков. Не пиши длинно.\n\n"
+#             "Игра Бункер. Катастрофа: зомби-апокалипсис. Проанализируй персонажей
+#             и выдай краткий общий итог в первой строке: победа или поражение группы. "
+#             "Затем дай краткий связный текст в 2 абзацах о том, кто внёс вклад в выживание,
+#             а кто мешал. Не пиши размышления. Не разделяй игроков. Не пиши длинно.\n\n"
 #         )
 #         for i, pdata in enumerate(players_data, 1):
 #             prompt += f"Игрок {i}: {', '.join(pdata)}\n"
@@ -1332,4 +1353,12 @@ def send_subscription_message(chat_id):
 #     except Exception as e:
 #         bot.send_message(message.chat.id, f"⚠️ Ошибка: {str(e)}")
 
-bot.polling()
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    filename='bunker_log.txt',
+    filemode='a'  # 'a' значит дозаписывать в конец файла, а не стирать старое
+)
+
+bot.infinity_polling(timeout=10, long_polling_timeout=5)
