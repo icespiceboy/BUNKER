@@ -41,6 +41,17 @@ def check_subscription(user_id):
         return False
 
 
+def send_subscription_message(chat_id):
+    keyboard = InlineKeyboardMarkup()
+    subscribe_button = InlineKeyboardButton(text="🔗 BUNKER LOG!", url=f"https://t.me/{CHANNEL_ID[1:]}")
+    keyboard.add(subscribe_button)
+    bot.send_message(
+        chat_id,
+        "Проверь подписку... 📮",
+        reply_markup=keyboard
+    )
+
+
 @bot.message_handler(commands=['start'])
 def start_command(message):
     user_id = message.from_user.id
@@ -1027,17 +1038,6 @@ def handle_kick_callback(call):
     save_database()
 
 
-@bot.message_handler(commands=['id'])
-def id_command(message):
-    user_id = message.from_user.id
-    if check_subscription(user_id):
-        with suppress(Exception):
-            bot.delete_message(message.chat.id, message.message_id)
-        bot.send_message(message.chat.id, f"🔹 Ваш id: <code>{message.chat.id}</code>", parse_mode='HTML')
-    else:
-        send_subscription_message(message.chat.id)
-
-
 @bot.message_handler(commands=['fertility'])
 def fer_command(message):
     user_id = message.from_user.id
@@ -1195,27 +1195,31 @@ def card_command(message):
 nick_selection = {}
 
 
-@bot.message_handler(commands=['setnick'])
-def set_nick_command(message):
+def get_profile_ui(user_id):
+    current_nick = database['all_users'].get(str(user_id), "Не установлен")
+    text = f"📇 <b>Профиль – {current_nick}</b>\n\n📡 Ваш ID: <code>{user_id}</code>\n🪑 Статус: В игре (...)"
+
+    keyboard = InlineKeyboardMarkup()
+    keyboard.add(InlineKeyboardButton("Сменить никнейм ✏️", callback_data="profile_change_nick"))
+
+    return text, keyboard
+
+
+@bot.message_handler(commands=['profile'])
+def profile_command(message):
     user_id = message.from_user.id
     if check_subscription(user_id):
         with suppress(Exception):
             bot.delete_message(message.chat.id, message.message_id)
 
-        keyboard = InlineKeyboardMarkup()
-        keyboard.add(InlineKeyboardButton("Отменить ❌", callback_data="setnick_cancel_initial"))
+        text, keyboard = get_profile_ui(user_id)
 
-        sent_message = bot.send_message(
+        bot.send_message(
             message.chat.id,
-            "💁‍♀️ Укажите свой новый никнейм:",
-            reply_markup=keyboard
+            text,
+            reply_markup=keyboard,
+            parse_mode='HTML'
         )
-
-        nick_selection[user_id] = {
-            'stage': 'awaiting_nick',
-            'message_id': sent_message.message_id,
-            'current_nick': database['all_users'].get(str(user_id), "Не установлен")
-        }
     else:
         send_subscription_message(message.chat.id)
 
@@ -1225,7 +1229,8 @@ def receive_nick(message):
     user_id = message.from_user.id
     new_nick = message.text
 
-    bot.delete_message(message.chat.id, message.message_id)
+    with suppress(Exception):
+        bot.delete_message(message.chat.id, message.message_id)
 
     user_data = nick_selection.get(user_id)
     if not user_data:
@@ -1235,9 +1240,9 @@ def receive_nick(message):
     nick_selection[user_id]['stage'] = 'confirming'
 
     keyboard = InlineKeyboardMarkup()
-    keyboard.add(InlineKeyboardButton("Сменить ✅", callback_data="setnick_confirm"))
-    keyboard.add(InlineKeyboardButton("Редактировать 📝", callback_data="setnick_edit"))
-    keyboard.add(InlineKeyboardButton("Отменить ❌", callback_data="setnick_cancel"))
+    keyboard.add(InlineKeyboardButton("Сменить ✅", callback_data="profile_confirm"))
+    keyboard.add(InlineKeyboardButton("Редактировать 📝", callback_data="profile_edit"))
+    keyboard.add(InlineKeyboardButton("Отменить ❌", callback_data="profile_cancel"))
 
     current_nick = user_data.get('current_nick', "Не установлен")
     bot.edit_message_text(
@@ -1250,51 +1255,57 @@ def receive_nick(message):
     )
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("setnick_"))
-def handle_nick_confirmation(call):
+@bot.callback_query_handler(func=lambda call: call.data.startswith("profile_"))
+def handle_profile_callbacks(call):
     user_id = call.from_user.id
-    user_data = nick_selection.get(user_id)
-
-    if not user_data:
-        bot.answer_callback_query(call.id, "Ошибка: не найдено активное изменение ника")
-        return
-
     action = call.data.split("_")[1]
 
-    if action == "cancel_initial":
-        nick_selection.pop(user_id, None)
+    if action == "change":
+        keyboard = InlineKeyboardMarkup()
+        keyboard.add(InlineKeyboardButton("Отменить ❌", callback_data="profile_cancel"))
+
+        nick_selection[user_id] = {
+            'stage': 'awaiting_nick',
+            'message_id': call.message.message_id,
+            'current_nick': database['all_users'].get(str(user_id), "Не установлен")
+        }
 
         bot.edit_message_text(
-            "Вы отменили смену никнейма ❌",
-            call.message.chat.id, call.message.message_id
+            "💁‍♀️ Укажите свой новый никнейм:",
+            call.message.chat.id,
+            call.message.message_id,
+            reply_markup=keyboard
         )
-        return
 
-    if action == "confirm":
+    elif action == "confirm":
+        user_data = nick_selection.get(user_id)
+        if not user_data:
+            bot.answer_callback_query(call.id, "Ошибка: данные устарели")
+            return
+
         new_nick = user_data['nick']
 
         database['all_users'][str(user_id)] = new_nick
-
         for player in database['players_card']:
             if player['id'] == user_id:
                 player['name'] = new_nick
                 break
-
         save_database()
 
-        bot.edit_message_text(
-            f'Ваш новый никнейм <b>"{new_nick}"</b> успешно установлен ✅',
-            call.message.chat.id,
-            call.message.message_id,
-            parse_mode='HTML'
-        )
+        bot.answer_callback_query(call.id, f"Никнейм успешно изменен на {new_nick} ✅", show_alert=False)
+
+        text, keyboard = get_profile_ui(user_id)
+        bot.edit_message_text(text, call.message.chat.id, call.message.message_id, reply_markup=keyboard,
+                              parse_mode='HTML')
+
         nick_selection.pop(user_id, None)
 
     elif action == "edit":
-        nick_selection[user_id]['stage'] = 'awaiting_nick'
+        if user_id in nick_selection:
+            nick_selection[user_id]['stage'] = 'awaiting_nick'
 
         keyboard = InlineKeyboardMarkup()
-        keyboard.add(InlineKeyboardButton("Отменить ❌", callback_data="setnick_cancel_initial"))
+        keyboard.add(InlineKeyboardButton("Отменить ❌", callback_data="profile_cancel"))
 
         bot.edit_message_text(
             "💁‍♀️ Укажите свой новый никнейм:",
@@ -1304,23 +1315,13 @@ def handle_nick_confirmation(call):
         )
 
     elif action == "cancel":
-        bot.edit_message_text(
-            "Вы отменили смену никнейма ❌",
-            call.message.chat.id,
-            call.message.message_id
-        )
+        bot.answer_callback_query(call.id, "Действие отменено ❌")
+
+        text, keyboard = get_profile_ui(user_id)
+        bot.edit_message_text(text, call.message.chat.id, call.message.message_id, reply_markup=keyboard,
+                              parse_mode='HTML')
+
         nick_selection.pop(user_id, None)
-
-
-def send_subscription_message(chat_id):
-    keyboard = InlineKeyboardMarkup()
-    subscribe_button = InlineKeyboardButton(text="Подписаться", url=f"https://t.me/{CHANNEL_ID[1:]}")
-    keyboard.add(subscribe_button)
-    bot.send_message(
-        chat_id,
-        "Чтобы пользоваться этим ботом, вы должны быть подписаны на новостной канал! 😄👇",
-        reply_markup=keyboard
-    )
 
 
 @bot.message_handler(commands=['mikey'])
