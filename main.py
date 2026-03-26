@@ -1303,6 +1303,17 @@ def send_subscription_message(chat_id):
     )
 
 
+@bot.message_handler(commands=['mikey'])
+def send_circle_message(message):
+    video_path = 'media/mikey.mp4'
+
+    if os.path.exists(video_path):
+        with open(video_path, 'rb') as v:
+            bot.send_video_note(message.chat.id, v)
+    else:
+        bot.send_message(message.chat.id, "Файл видео не найден 🎥❌")
+
+
 # @bot.message_handler(commands=["finish"])
 # def finish_handler(message):
 #     try:
