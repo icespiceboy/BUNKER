@@ -47,8 +47,28 @@ def start_command(message):
     user_name = message.from_user.first_name
     if str(user_id) not in database['all_users']:
         database['all_users'][str(user_id)] = user_name
-
         save_database()
+        with suppress(Exception):
+            bot.delete_message(message.chat.id, message.message_id)
+        message_text = ("<b>Добро пожаловать в BUNKER! 🌿🏚</b>\n\n"
+                        f"Мир снаружи погиб. Прямо сейчас ты стоишь перед дверью в убежище. "
+                        f"Твоя задача — выжить любой ценой и доказать остальным, что именно "
+                        f"ТЫ достоин продолжить род человеческий\n\n"
+                        f"<b>🎨 Твой персонаж </b>— это уникальный набор навыков, здоровья и "
+                        f"странностей\n<b>⚖️ Твоя цель </b>— убедить группу не выгонять тебя на "
+                        f"поверхность\n\n<b>⚠️ Вход в систему:</b>\nЧтобы "
+                        f"получить доступ к управлению персонажем и командам игры, необходимо "
+                        f"синхронизироваться с нашим каналом. Это твой бортовой журнал!\n\n"
+                        f"<i>После подписки все функции в меню (слева внизу ≡) станут "
+                        f"доступны</i>")
+        keyboard = InlineKeyboardMarkup()
+        url_button = InlineKeyboardButton("🔗 BUNKER LOG! — Подписаться", url=f"https://t.me/{CHANNEL_ID[1:]}")
+        keyboard.add(url_button)
+        bot.send_message(message.chat.id, message_text, reply_markup=keyboard, parse_mode='HTML')
+    else:
+        with suppress(Exception):
+            bot.delete_message(message.chat.id, message.message_id)
+        bot.send_message(message.chat.id, "Привет! А мы уже знакомы 😄")
 
 
 def get_years(age):
@@ -947,7 +967,8 @@ def handle_select_player2_callback(call):
         call_command(player1_id, player1['card_message_id'])
         call_command(player2_id, player2['card_message_id'])
 
-        bot.edit_message_text("Харакетристики обменяты ♻", call.message.chat.id, call.message.message_id)
+        bot.edit_message_text("Обмен харакетристик с учётом пола произведён успешно ♻",
+                              call.message.chat.id, call.message.message_id)
     else:
         bot.send_message(chat_id_sender, "Один или оба игрока не найдены 🚫🔍")
 
@@ -1012,8 +1033,7 @@ def id_command(message):
     if check_subscription(user_id):
         with suppress(Exception):
             bot.delete_message(message.chat.id, message.message_id)
-        chat_id = message.chat.id
-        bot.send_message(chat_id, f"🔹 Ваш id: <code>{chat_id}</code>", parse_mode='HTML')
+        bot.send_message(message.chat.id, f"🔹 Ваш id: <code>{message.chat.id}</code>", parse_mode='HTML')
     else:
         send_subscription_message(message.chat.id)
 
