@@ -352,52 +352,187 @@ def get_card():
     return card_data
 
 
+def get_lobby_ui(user_id):
+    lobby = database['lobby']
+    players = lobby['players']
+
+    text = "<b>🗝 Лобби выживших открыто!</b> 🧳\n\n"
+    text += "<i>Чтобы попасть в бункер, подтверди готовность. Когда все будут готовы, админ начнет раздачу карт</i>\n\n"
+    text += "<b>👥 Список группы:</b>\n"
+
+    all_ready = True
+    count = 1
+
+    for pid, pdata in players.items():
+        name = database['all_users'].get(str(pid), "Неизвестный")
+
+        if int(pid) == 833674307:
+            status_emoji = "👑"
+        else:
+            status_emoji = "🟢" if pdata['ready'] else "⏳"
+            if not pdata['ready']:
+                all_ready = False
+
+        text += f"{count}. {name} {status_emoji}\n"
+        count += 1
+
+    text += f"\n<i>Всего участников: {len(players)}</i>"
+
+    keyboard = InlineKeyboardMarkup()
+    is_admin = int(user_id) == 833674307
+
+    if is_admin:
+        if all_ready and len(players) > 1:
+            keyboard.add(InlineKeyboardButton("Начать игру 🤼‍♀️", callback_data="lobby_start"))
+        keyboard.add(InlineKeyboardButton("Покинуть лобби 🚪", callback_data="lobby_leave"))
+    else:
+        is_ready = players.get(str(user_id), {}).get('ready', False)
+        if is_ready:
+            keyboard.add(InlineKeyboardButton("Я не готов 🔴", callback_data="lobby_ready"))
+        else:
+            keyboard.add(InlineKeyboardButton("Я готов 🟢", callback_data="lobby_ready"))
+        keyboard.add(InlineKeyboardButton("Покинуть лобби 🚪", callback_data="lobby_leave"))
+
+    return text, keyboard
+
+
+def broadcast_lobby_update():
+    for pid, pdata in database['lobby']['players'].items():
+        msg_id = pdata.get('lobby_message_id')
+        if msg_id:
+            text, kb = get_lobby_ui(pid)
+            with suppress(Exception):
+                bot.edit_message_text(text, chat_id=int(pid), message_id=msg_id, reply_markup=kb, parse_mode='HTML')
+
+
 @bot.message_handler(commands=['play'])
 def play_command(message):
     user_id = message.from_user.id
-    if check_subscription(user_id):
-        with suppress(Exception):
-            bot.delete_message(message.chat.id, message.message_id)
-        if message.chat.id == 833674307:
-            if user_id not in database['inthegame']:
-                database['inthegame'].append(user_id)
 
-            database['players_card'] = []
-            database['used'] = {
-                'professions': [],
-                'healths': [],
-                'phobias': [],
-                'hobbies': [],
-                'facts': [],
-                'baggages': [],
-                'cards': []
-            }
+    if not check_subscription(user_id):
+        send_subscription_message(message.chat.id)
+        return
 
-            user_ordinal = 1
+    with suppress(Exception):
+        bot.delete_message(message.chat.id, message.message_id)
 
-            for user_id in database['inthegame']:
-                card_data = get_card()
-                sent_card_message = send_generated_card(user_id, card_data)
-                user_name = database['all_users'].get(str(user_id), "Unknown")
-                new_user_template = {
-                    "id": user_id,
-                    "ordinal": user_ordinal,
-                    "name": user_name,
-                    "card": card_data,
-                    "card_message_id": sent_card_message.message_id,
-                    "common_message_id": 0
-                }
+    lobby = database.setdefault('lobby', {'status': 'CLOSED', 'players': {}})
 
-                database['players_card'].append(new_user_template)
-                user_ordinal += 1
-
-            database['user_ordinal'] = user_ordinal
+    if lobby['status'] == 'STARTED':
+        if str(user_id) in lobby['players']:
+            bot.send_message(message.chat.id, "Нельзя играть в бункер, пока ты уже в бункере 📛")
         else:
-            bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой команды 🔐🚫")
+            bot.send_message(message.chat.id, "Дверь бункера уже заперта, игра идет. Дождись окончания! ⏳")
+        return
+
+    if lobby['status'] == 'CLOSED':
+        lobby['status'] = 'OPEN'
+
+    if str(user_id) not in lobby['players']:
+        is_ready_by_default = (user_id == 833674307)
+
+        lobby['players'][str(user_id)] = {
+            'ready': is_ready_by_default,
+            'lobby_message_id': None
+        }
+
+        text, kb = get_lobby_ui(user_id)
+        sent_msg = bot.send_message(message.chat.id, text, reply_markup=kb, parse_mode='HTML')
+        lobby['players'][str(user_id)]['lobby_message_id'] = sent_msg.message_id
+        save_database()
+
+        broadcast_lobby_update()
+    else:
+        old_msg_id = lobby['players'][str(user_id)]['lobby_message_id']
+        with suppress(Exception):
+            bot.delete_message(message.chat.id, old_msg_id)
+
+        text, kb = get_lobby_ui(user_id)
+        sent_msg = bot.send_message(message.chat.id, text, reply_markup=kb, parse_mode='HTML')
+        lobby['players'][str(user_id)]['lobby_message_id'] = sent_msg.message_id
+        save_database()
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("lobby_"))
+def handle_lobby_callbacks(call):
+    user_id = str(call.from_user.id)
+    action = call.data.split("_")[1]
+    lobby = database['lobby']
+
+    if action == "ready":
+        lobby['players'][user_id]['ready'] = not lobby['players'][user_id]['ready']
+        save_database()
+        broadcast_lobby_update()
+        bot.answer_callback_query(call.id)
+
+    elif action == "leave":
+        if user_id in lobby['players']:
+            del lobby['players'][user_id]
+
+        if len(lobby['players']) == 0:
+            lobby['status'] = 'CLOSED'
 
         save_database()
-    else:
-        send_subscription_message(message.chat.id)
+        bot.edit_message_text("Вы покинули лобби. Чтобы вернуться, введите /play 🚪", call.message.chat.id,
+                              call.message.message_id)
+        broadcast_lobby_update()
+        bot.answer_callback_query(call.id)
+
+    elif action == "start":
+        if int(user_id) != 833674307:
+            bot.answer_callback_query(call.id, "Только админ может начать игру!", show_alert=True)
+            return
+
+        bot.answer_callback_query(call.id, "Раздаю карты...")
+        lobby['status'] = 'STARTED'
+
+        for pid, pdata in lobby['players'].items():
+            msg_id = pdata['lobby_message_id']
+            with suppress(Exception):
+                bot.edit_message_text("<b>Запуск системы... Рассылаю личные дела ⚙️</b>", chat_id=int(pid),
+                                      message_id=msg_id, parse_mode='HTML')
+
+        database['players_card'] = []
+        database['used'] = {k: [] for k in database['used']}
+
+        user_ordinal = 1
+        for pid, pdata in lobby['players'].items():
+            card_data = get_card()
+
+            initial_visibility = {
+                "bio": False, "prof": False, "heal": False, "phob": False,
+                "hobb": False, "fact": False, "bagg": False, "card1": False, "card2": False
+            }
+
+            card_text = generate_message_text(card_data['chars'], initial_visibility)
+            reply_markup = get_card_keyboard()
+
+            bot.edit_message_text(
+                chat_id=int(pid),
+                message_id=pdata['lobby_message_id'],
+                text=card_text,
+                reply_markup=reply_markup,
+                parse_mode='HTML'
+            )
+
+            user_name = database['all_users'].get(str(pid), "Unknown")
+
+            database['players_card'].append({
+                "id": int(pid),
+                "ordinal": user_ordinal,
+                "name": user_name,
+                "card": {
+                    "chars": card_data['chars'],
+                    "indexes": card_data['indexes'],
+                    "visibility": initial_visibility
+                },
+                "card_message_id": pdata['lobby_message_id'],
+                "common_message_id": 0
+            })
+            user_ordinal += 1
+
+        database['user_ordinal'] = user_ordinal
+        save_database()
 
 
 def get_card_keyboard():
@@ -444,9 +579,8 @@ def send_generated_card(user_id, card_data):
 @bot.callback_query_handler(func=lambda call: call.data in ["bio", "prof", "heal", "phob", "hobb", "fact", "bagg",
                                                             "card1", "card2"])
 def update_visible_callback(call):
-    chat_id = call.message.chat.id
 
-    user = next((user for user in database['players_card'] if user['id'] == chat_id))
+    user = next((user for user in database['players_card'] if user['id'] == call.message.chat.id))
 
     if user:
         element_to_update = call.data
@@ -459,7 +593,7 @@ def update_visible_callback(call):
 
         new_message_text = generate_message_text(user['card']['chars'], user['card']['visibility'])
 
-        bot.edit_message_text(new_message_text, chat_id, message_id, parse_mode='HTML', reply_markup=reply_markup)
+        bot.edit_message_text(new_message_text, call.message.chat.id, message_id, parse_mode='HTML', reply_markup=reply_markup)
 
         bot.answer_callback_query(call.id, text="Статус карты обновлён ✅", show_alert=False)
 
@@ -531,6 +665,21 @@ def generate_message_text(card_data, visibility):
     return message_text
 
 
+def get_table_keyboard(user_id):
+    keyboard = InlineKeyboardMarkup()
+    admin_id = 833674307
+
+    if int(user_id) == admin_id:
+        keyboard.row(
+            InlineKeyboardButton(text="Выгнать 👤", callback_data="admin_kick_list"),
+            InlineKeyboardButton(text="Обновить 🔄", callback_data="update_message")
+        )
+    else:
+        keyboard.add(InlineKeyboardButton(text="Обновить 🔄", callback_data="update_message"))
+
+    return keyboard
+
+
 @bot.message_handler(commands=['table'])
 def table_command(message):
     user_id = message.from_user.id
@@ -538,38 +687,34 @@ def table_command(message):
         with suppress(Exception):
             bot.delete_message(message.chat.id, message.message_id)
 
-        sender_id = message.from_user.id
+        lobby_players = database.get('lobby', {}).get('players', {})
         admin_id = 833674307
 
-        if sender_id != admin_id and sender_id not in database['inthegame']:
+        if str(user_id) not in lobby_players and user_id != admin_id:
             bot.send_message(message.chat.id, "Вы не в игре 😕📛")
             return
 
         message_text = generate_table_message_text()
-        keyboard = InlineKeyboardMarkup()
-        update_button = InlineKeyboardButton(text="Обновить", callback_data="update_message")
-        keyboard.add(update_button)
 
         for user in database['players_card']:
-            user_id = user['id']
-            prev_message_id = user.get('common_message_id')
+            p_id = user['id']
+            prev_msg_id = user.get('common_message_id')
+            kb = get_table_keyboard(p_id)
 
-            if prev_message_id:
-                with suppress(Exception):
-                    bot.edit_message_text(
-                        message_text,
-                        chat_id=user_id,
-                        message_id=prev_message_id,
-                        parse_mode="HTML",
-                        reply_markup=keyboard
-                    )
-            else:
-                sent_message = bot.send_message(user_id, message_text, parse_mode="HTML", reply_markup=keyboard)
-                user['common_message_id'] = sent_message.message_id
+            try:
+                if prev_msg_id:
+                    bot.edit_message_text(message_text, p_id, prev_msg_id, parse_mode="HTML", reply_markup=kb)
+                else:
+                    sent = bot.send_message(p_id, message_text, parse_mode="HTML", reply_markup=kb)
+                    user['common_message_id'] = sent.message_id
+            except Exception:
+                sent = bot.send_message(p_id, message_text, parse_mode="HTML", reply_markup=kb)
+                user['common_message_id'] = sent.message_id
 
-        admin_in_players = any(user['id'] == admin_id for user in database['players_card'])
-        if not admin_in_players:
-            bot.send_message(admin_id, message_text, parse_mode='HTML', reply_markup=keyboard)
+        admin_in_game = any(u['id'] == admin_id for u in database['players_card'])
+        if not admin_in_game:
+            kb = get_table_keyboard(admin_id)
+            bot.send_message(admin_id, message_text, parse_mode='HTML', reply_markup=kb)
 
         save_database()
     else:
@@ -647,40 +792,78 @@ def update_table_message(call):
 
     if check_subscription(user_id):
         message_text = generate_table_message_text()
-        keyboard = InlineKeyboardMarkup()
-        update_button = InlineKeyboardButton(text="Обновить", callback_data="update_message")
-        keyboard.add(update_button)
 
         for user in database['players_card']:
-            player_id = user['id']
-            prev_message_id = user.get('common_message_id')
-
-            if prev_message_id:
+            p_id = user['id']
+            prev_msg_id = user.get('common_message_id')
+            if prev_msg_id:
                 with suppress(Exception):
-                    bot.edit_message_text(
-                        message_text,
-                        chat_id=player_id,
-                        message_id=prev_message_id,
-                        parse_mode="HTML",
-                        reply_markup=keyboard
-                    )
+                    bot.edit_message_text(message_text, p_id, prev_msg_id,
+                                          parse_mode="HTML", reply_markup=get_table_keyboard(p_id))
 
         admin_id = 833674307
-        admin_in_players = any(user['id'] == admin_id for user in database['players_card'])
+        admin_in_players = any(u['id'] == admin_id for u in database['players_card'])
         if user_id == admin_id and not admin_in_players:
             with suppress(Exception):
-                bot.edit_message_text(
-                    message_text,
-                    chat_id=user_id,
-                    message_id=call.message.message_id,
-                    parse_mode="HTML",
-                    reply_markup=keyboard
-                )
+                bot.edit_message_text(message_text, admin_id, call.message.message_id,
+                                      parse_mode="HTML", reply_markup=get_table_keyboard(admin_id))
 
         bot.answer_callback_query(call.id, "Общий стол обновлен для всех игроков! ✅")
-
     else:
         bot.answer_callback_query(call.id, "Чтобы обновить сообщение, подпишитесь на канал 📛", show_alert=True)
+
+
+@bot.callback_query_handler(func=lambda call: call.data in ["admin_kick_list", "admin_kick_cancel"])
+def handle_admin_kick_navigation(call):
+    admin_id = 833674307
+    if call.from_user.id != admin_id: return
+
+    if call.data == "admin_kick_cancel":
+        bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id,
+                                      reply_markup=get_table_keyboard(admin_id))
+        return
+
+    keyboard = InlineKeyboardMarkup()
+    for user in database['players_card']:
+        keyboard.add(InlineKeyboardButton(f"❌ {user['name']}", callback_data=f"exec_kick_{user['id']}"))
+
+    keyboard.add(InlineKeyboardButton("Отмена 🔙", callback_data="admin_kick_cancel"))
+
+    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=keyboard)
+    bot.answer_callback_query(call.id)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("exec_kick_"))
+def handle_execute_kick(call):
+    admin_id = 833674307
+    if call.from_user.id != admin_id:
+        return
+
+    target_id = int(call.data.split('_')[-1])
+    lobby = database['lobby']
+
+    database['players_card'] = [p for p in database['players_card'] if p['id'] != target_id]
+
+    player_id_str = str(target_id)
+    if player_id_str in lobby['players']:
+        msg_id = lobby['players'][player_id_str].get('lobby_message_id')
+        if msg_id:
+            with suppress(Exception):
+                bot.edit_message_text("<b>Вы были удалены из игры администратором 🚫</b>",
+                                      chat_id=target_id, message_id=msg_id, parse_mode='HTML')
+        del lobby['players'][player_id_str]
+
+    if not lobby['players']:
+        lobby['status'] = 'CLOSED'
+        save_database()
+        bot.answer_callback_query(call.id, "Последний игрок удален. Игра закрыта 🔒", show_alert=True)
+        bot.edit_message_text("<b>Все игроки удалены. Игра завершена 🛑</b>",
+                              call.message.chat.id, call.message.message_id, parse_mode='HTML')
+        return
+
+    save_database()
+    update_table_message(call)
+    bot.answer_callback_query(call.id, "Игрок успешно изгнан 🗑")
 
 
 @bot.message_handler(commands=['generate'])
@@ -689,29 +872,30 @@ def gen_command(message):
     if check_subscription(user_id):
         with suppress(Exception):
             bot.delete_message(message.chat.id, message.message_id)
-        if message.chat.id == 833674307:
-            sender_id = message.from_user.id
-            admin_id = 833674307
-            if sender_id != admin_id and sender_id not in database['inthegame']:
-                bot.send_message(message.chat.id, "Вы не в игре 😕📛")
-                return
-
-            message_text = "🖐 Выберите игрока (-ов):"
-            player_buttons = [
-                [InlineKeyboardButton(database['all_users'].get(str(p_id), "Игрок"), callback_data=f"generate_{p_id}")]
-                for p_id in database['inthegame']
-            ]
-
-            keyboard = [
-                [InlineKeyboardButton("Всем", callback_data="generate_all")],
-                *player_buttons,
-                [InlineKeyboardButton("Отменить ❌", callback_data="cancel_generate")]
-            ]
-
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            bot.send_message(message.chat.id, message_text, reply_markup=reply_markup)
-        else:
+        if user_id != 833674307:
             bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой команды 🔐🚫")
+            return
+
+        lobby_players = database.get('lobby', {}).get('players', {})
+
+        if not lobby_players:
+            bot.send_message(message.chat.id, "В лобби пока никого нет 🤷‍♂️")
+            return
+
+        message_text = "🖐 Выберите игрока (-ов):"
+        player_buttons = []
+        for p_id in lobby_players.keys():
+            p_name = database['all_users'].get(str(p_id), f"ID: {p_id}")
+            player_buttons.append([InlineKeyboardButton(p_name, callback_data=f"generate_{p_id}")])
+
+        keyboard = [
+            [InlineKeyboardButton("Всем", callback_data="generate_all")],
+            *player_buttons,
+            [InlineKeyboardButton("Отменить ❌", callback_data="cancel_generate")]
+        ]
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        bot.send_message(message.chat.id, message_text, reply_markup=reply_markup)
     else:
         send_subscription_message(message.chat.id)
 
@@ -723,7 +907,6 @@ def handle_generate_callback(call):
         return
 
     if call.data == "generate_all":
-        chat_id = call.message.chat.id
         message_text = "🎨 Выберите характеристику:"
         keyboard = [
             [InlineKeyboardButton("Профессия", callback_data="char_prof_all")],
@@ -735,10 +918,9 @@ def handle_generate_callback(call):
             [InlineKeyboardButton("Отменить ❌", callback_data="cancel_generate")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        bot.edit_message_text(message_text, chat_id, call.message.message_id, reply_markup=reply_markup)
+        bot.edit_message_text(message_text, call.message.chat.id, call.message.message_id, reply_markup=reply_markup)
     else:
         player_id = call.data.split('_')[-1]
-        chat_id = call.message.chat.id
         message_text = "🎨 Выберите характеристику:"
         keyboard = [
             [InlineKeyboardButton("Профессия", callback_data=f"char_prof_{player_id}")],
@@ -750,18 +932,22 @@ def handle_generate_callback(call):
             [InlineKeyboardButton("Отменить ❌", callback_data="cancel_generate")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        bot.edit_message_text(message_text, chat_id, call.message.message_id, reply_markup=reply_markup)
+        bot.edit_message_text(message_text, call.message.chat.id, call.message.message_id, reply_markup=reply_markup)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('char_'))
 def handle_char_callback(call):
     data = call.data.split('_')
-    char = data[1]
-    target = data[2]
+    char, target = data[1], data[2]
+
+    lobby_players = database.get('lobby', {}).get('players', {})
+    ids_in_game = [int(pid) for pid in lobby_players.keys()]
 
     if target == "all":
         for player in database['players_card']:
-            update_characteristics(player, char)
+            if player['id'] in ids_in_game:
+                update_characteristics(player, char)
+
         bot.edit_message_text("Характеристики сгенерированы для всех ♻", call.message.chat.id, call.message.message_id)
     else:
         player_id = int(target)
@@ -775,6 +961,9 @@ def handle_char_callback(call):
 
 def update_characteristics(player, char):
     gender = player['card']['chars']['bio']['gender']
+
+    if 'indexes' not in player['card']:
+        player['card']['indexes'] = {}
 
     if char == "prof":
         profession, profession_index = get_profession(gender)
@@ -802,7 +991,6 @@ def update_characteristics(player, char):
         player['card']['indexes']['bagg'] = baggage_index
 
     call_command(player['id'], player['card_message_id'])
-
     save_database()
 
 
@@ -812,28 +1000,28 @@ def swap_command(message):
     if check_subscription(user_id):
         with suppress(Exception):
             bot.delete_message(message.chat.id, message.message_id)
-        if message.chat.id == 833674307:
-            sender_id = message.from_user.id
-            admin_id = 833674307
-            if sender_id != admin_id and sender_id not in database['inthegame']:
-                bot.send_message(message.chat.id, "Вы не в игре 😕📛")
-                return
-
-            message_text = "🎨 Выберите характеристику:"
-            keyboard = [
-                [InlineKeyboardButton("Профессия", callback_data="swap_char_prof")],
-                [InlineKeyboardButton("Здоровье", callback_data="swap_char_heal")],
-                [InlineKeyboardButton("Фобия", callback_data="swap_char_phob")],
-                [InlineKeyboardButton("Хобби", callback_data="swap_char_hobb")],
-                [InlineKeyboardButton("Факт", callback_data="swap_char_fact")],
-                [InlineKeyboardButton("Багаж", callback_data="swap_char_bagg")],
-                [InlineKeyboardButton("Отменить ❌", callback_data="cancel_swap")]
-            ]
-
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            bot.send_message(message.chat.id, message_text, reply_markup=reply_markup)
-        else:
+        if user_id != 833674307:
             bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой команды 🔐🚫")
+            return
+
+        lobby_players = database.get('lobby', {}).get('players', {})
+        if not lobby_players:
+            bot.send_message(message.chat.id, "В игре пока никого нет 🤷‍♂️")
+            return
+
+        message_text = "🎨 Выберите характеристику:"
+        keyboard = [
+            [InlineKeyboardButton("Профессия", callback_data="swap_char_prof")],
+            [InlineKeyboardButton("Здоровье", callback_data="swap_char_heal")],
+            [InlineKeyboardButton("Фобия", callback_data="swap_char_phob")],
+            [InlineKeyboardButton("Хобби", callback_data="swap_char_hobb")],
+            [InlineKeyboardButton("Факт", callback_data="swap_char_fact")],
+            [InlineKeyboardButton("Багаж", callback_data="swap_char_bagg")],
+            [InlineKeyboardButton("Отменить ❌", callback_data="cancel_swap")]
+        ]
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        bot.send_message(message.chat.id, message_text, reply_markup=reply_markup)
     else:
         send_subscription_message(message.chat.id)
 
@@ -845,36 +1033,40 @@ def handle_swap_char_callback(call):
         return
 
     char = call.data.split('_')[-1]
-    chat_id = call.message.chat.id
+    lobby_players = database.get('lobby', {}).get('players', {})
+
     message_text = "1️⃣ Выберите первого игрока:"
     keyboard = []
 
-    for player_id in database['inthegame']:
-        player_name = database['all_users'].get(str(player_id), "Неизвестный игрок")
+    for player_id in lobby_players.keys():
+        player_name = database['all_users'].get(str(player_id), f"ID: {player_id}")
         keyboard.append([InlineKeyboardButton(player_name, callback_data=f"select_player1_{char}_{player_id}")])
 
     keyboard.append([InlineKeyboardButton("Отменить ❌", callback_data="cancel_swap")])
     reply_markup = InlineKeyboardMarkup(keyboard)
-    bot.edit_message_text(message_text, chat_id, call.message.message_id, reply_markup=reply_markup)
+    bot.edit_message_text(message_text, call.message.chat.id, call.message.message_id, reply_markup=reply_markup)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('select_player1_'))
 def handle_select_player1_callback(call):
     data = call.data.split('_')
-    char = data[2]
-    player1_id = data[3]
-    chat_id = call.message.chat.id
+    char, player1_id = data[2], data[3]
+    lobby_players = database.get('lobby', {}).get('players', {})
+
     message_text = "2️⃣ Выберите второго игрока:"
     keyboard = []
 
-    for player_id in database['inthegame']:
-        player_name = database['all_users'].get(str(player_id), "Неизвестный игрок")
-        keyboard.append([InlineKeyboardButton(player_name,
-                                              callback_data=f"select_player2_{char}_{player1_id}_{player_id}")])
+    for player_id in lobby_players.keys():
+        if str(player_id) == str(player1_id): continue
+
+        player_name = database['all_users'].get(str(player_id), f"ID: {player_id}")
+        keyboard.append(
+            [InlineKeyboardButton(player_name, callback_data=f"select_player2_{char}_{player1_id}_{player_id}")])
 
     keyboard.append([InlineKeyboardButton("Отменить ❌", callback_data="cancel_swap")])
     reply_markup = InlineKeyboardMarkup(keyboard)
-    bot.edit_message_text(message_text, chat_id, call.message.message_id, reply_markup=reply_markup)
+    bot.edit_message_text(message_text, call.message.chat.id, call.message.message_id, reply_markup=reply_markup,
+                          parse_mode='HTML')
 
 
 def get_gendered_text(array_data, item_index, gender):
@@ -893,7 +1085,6 @@ def handle_select_player2_callback(call):
     char = data[2]
     player1_id = int(data[3])
     player2_id = int(data[4])
-    chat_id_sender = call.message.chat.id
 
     player1 = next((player for player in database['players_card'] if
                     player['id'] == player1_id), None)
@@ -981,61 +1172,7 @@ def handle_select_player2_callback(call):
         bot.edit_message_text("Обмен харакетристик с учётом пола произведён успешно ♻",
                               call.message.chat.id, call.message.message_id)
     else:
-        bot.send_message(chat_id_sender, "Один или оба игрока не найдены 🚫🔍")
-
-
-@bot.message_handler(commands=['kick'])
-def kick_command(message):
-    user_id = message.from_user.id
-    if check_subscription(user_id):
-        with suppress(Exception):
-            bot.delete_message(message.chat.id, message.message_id)
-        if message.chat.id == 833674307:
-            if not database['inthegame']:
-                bot.send_message(message.chat.id, "В игре сейчас нет игроков 🚫")
-                return
-
-            message_text = "👤 Выберите игрока для удаления:"
-            keyboard = []
-
-            for player_id in database['inthegame']:
-                player_name = database['all_users'].get(str(player_id), "Неизвестный игрок")
-                keyboard.append([InlineKeyboardButton(player_name, callback_data=f"kick_player_{player_id}")])
-
-            keyboard.append([InlineKeyboardButton("Отменить ❌", callback_data="cancel_kick")])
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            bot.send_message(message.chat.id, message_text, reply_markup=reply_markup)
-        else:
-            bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой команды 🔐🚫")
-    else:
-        send_subscription_message(message.chat.id)
-
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith('kick_player_') or call.data == "cancel_kick")
-def handle_kick_callback(call):
-    if call.data == "cancel_kick":
-        bot.edit_message_text("Вы отменили выбор ❌", call.message.chat.id, call.message.message_id)
-        return
-
-    player_id = int(call.data.split('_')[-1])
-
-    player_index = None
-    for index, player in enumerate(database['players_card']):
-        if player['id'] == player_id:
-            player_index = index
-            break
-
-    if player_index is not None:
-        del database['players_card'][player_index]
-
-        if player_id in database['inthegame']:
-            database['inthegame'].remove(player_id)
-
-        bot.edit_message_text("Игрок успешно удалён 🗑✅", call.message.chat.id, call.message.message_id)
-    else:
-        bot.edit_message_text("Игрок не найден 🚫🔍", call.message.chat.id, call.message.message_id)
-
-    save_database()
+        bot.send_message(call.message.chat.id, "Один или оба игрока не найдены 🚫🔍")
 
 
 @bot.message_handler(commands=['fertility'])
@@ -1045,25 +1182,23 @@ def fer_command(message):
         with suppress(Exception):
             bot.delete_message(message.chat.id, message.message_id)
         if message.chat.id == 833674307:
-            sender_id = message.from_user.id
-            admin_id = 833674307
-            if sender_id != admin_id and sender_id not in database['inthegame']:
-                bot.send_message(message.chat.id, "Вы не в игре 😕📛")
+            lobby_players = database.get('lobby', {}).get('players', {})
+
+            if not lobby_players:
+                bot.send_message(message.chat.id, "В игре нет активных участников 😕📛")
                 return
 
             message_text = "👥 Выберите игрока:"
             keyboard = []
 
-            for player_id in database['inthegame']:
-                player_name = database['all_users'].get(str(player_id), "Unknown")
+            for player_id in lobby_players.keys():
+                player_name = database['all_users'].get(str(player_id), f"ID: {player_id}")
                 keyboard.append([InlineKeyboardButton(player_name, callback_data=f"remove_fertility_{player_id}")])
 
             keyboard.append([InlineKeyboardButton("Отменить ❌", callback_data="cancel_fertility")])
 
             reply_markup = InlineKeyboardMarkup(keyboard)
             bot.send_message(message.chat.id, message_text, reply_markup=reply_markup)
-
-            save_database()
         else:
             bot.send_message(message.chat.id, "У вас нет разрешения на выполнение \
             этой команды 🔐🚫")
@@ -1104,49 +1239,59 @@ def shuffle_command(message):
     if check_subscription(user_id):
         with suppress(Exception):
             bot.delete_message(message.chat.id, message.message_id)
-        if message.chat.id == 833674307:
-            ids_in_game = database['inthegame']
+        if user_id == 833674307:
+            lobby_players = database.get('lobby', {}).get('players', {})
+            ids_in_game = [int(pid) for pid in lobby_players.keys()]
 
-            player_data = [
-                {"id": player["id"], "prof_index": player["card"]["indexes"]["prof"]}
-                for player in database['players_card'] if player['id'] in ids_in_game
+            if not ids_in_game:
+                bot.send_message(message.chat.id, "Нет игроков для перемешивания 🚫")
+                return
+
+            active_players = [
+                player for player in database['players_card']
+                if player['id'] in ids_in_game
             ]
 
-            num_players = len(player_data)
-            original_indexes = [data["prof_index"] for data in player_data]
+            if len(active_players) < 2:
+                bot.send_message(message.chat.id, "Нужно минимум 2 игрока с картами для перемешивания ♻")
+                return
 
-            while True:
-                shuffled_indexes = random.sample(original_indexes, num_players)
-                if all(original != shuffled for original, shuffled in zip(original_indexes, shuffled_indexes)):
+            original_indexes = [p["card"]["indexes"]["prof"] for p in active_players]
+
+            max_attempts = 100
+            shuffled_indexes = original_indexes[:]
+            found = False
+            for _ in range(max_attempts):
+                random.shuffle(shuffled_indexes)
+                if all(orig != shuf for orig, shuf in zip(original_indexes, shuffled_indexes)):
+                    found = True
                     break
 
-            for i, player_info in enumerate(player_data):
-                new_prof_index = shuffled_indexes[i]
-                player_id = player_info["id"]
-
-                player = next((p for p in database['players_card'] if p['id'] == player_id), None)
-                if player:
+            if found:
+                for i, player in enumerate(active_players):
+                    new_prof_index = shuffled_indexes[i]
                     gender = player["card"]["chars"]["bio"]["gender"]
-                    if gender == 'М':
-                        new_prof = professions[str(new_prof_index)][0]
+
+                    prof_options = professions.get(str(new_prof_index), ["Неизвестно"])
+
+                    if gender == 'М' or len(prof_options) == 1:
+                        new_prof_text = prof_options[0]
                     else:
-                        if len(professions[str(new_prof_index)]) > 1:
-                            new_prof = professions[str(new_prof_index)][1]
-                        else:
-                            new_prof = professions[str(new_prof_index)][0]
+                        new_prof_text = prof_options[1]
 
                     player["card"]["indexes"]["prof"] = new_prof_index
-                    player["card"]["chars"]["prof"] = new_prof
+                    player["card"]["chars"]["prof"] = new_prof_text
 
-            save_database()
+                save_database()
+            else:
+                bot.send_message(message.chat.id, "Не удалось перемешать профессии без совпадений 😕")
+                return
 
-            for player in database['players_card']:
-                if player['id'] in ids_in_game:
-                    try:
-                        call_command(player['id'], player['card_message_id'])
-                    except Exception as e:
-                        bot.send_message(message.chat.id,
-                                         f"Ошибка при обновлении карточки игрока {player['name']}: {str(e)} ⚠")
+            for player in active_players:
+                try:
+                    call_command(player['id'], player['card_message_id'])
+                except Exception as e:
+                    print(f"Ошибка обновления у {player['id']}: {e}")
 
             bot.send_message(message.chat.id, "Профессии успешно перемешаны с учётом пола ♻")
         else:
@@ -1193,14 +1338,24 @@ def card_command(message):
 
 
 nick_selection = {}
-
-
 def get_profile_ui(user_id):
-    current_nick = database['all_users'].get(str(user_id), "Не установлен")
-    text = f"📇 <b>Профиль – {current_nick}</b>\n\n📡 Ваш ID: <code>{user_id}</code>\n🪑 Статус: В игре (...)"
+    user_id_str = str(user_id)
+    user_name = database['all_users'].get(user_id_str, "Выживший")
+    text = f"📇 <b>Профиль – {user_name}</b>\n\n📡 Ваш ID: <code>{user_id}</code>\n"
 
     keyboard = InlineKeyboardMarkup()
     keyboard.add(InlineKeyboardButton("Сменить никнейм ✏️", callback_data="profile_change_nick"))
+
+    lobby = database.get('lobby', {})
+    players = lobby.get('players', {})
+    status = lobby.get('status', {})
+
+    if status == "STARTED":
+        text += f"🪑 <b>Статус:</b> В игре"
+    elif status == "OPEN" and user_id_str in players:
+        text += f"🪑 <b>Статус:</b> В лобби"
+    else:
+        text += "🪑 <b>Статус:</b> Вне игры"
 
     return text, keyboard
 
@@ -1214,12 +1369,8 @@ def profile_command(message):
 
         text, keyboard = get_profile_ui(user_id)
 
-        bot.send_message(
-            message.chat.id,
-            text,
-            reply_markup=keyboard,
-            parse_mode='HTML'
-        )
+        bot.send_message(message.chat.id, text, reply_markup=keyboard,
+                         parse_mode='HTML')
     else:
         send_subscription_message(message.chat.id)
 
@@ -1333,6 +1484,44 @@ def send_circle_message(message):
             bot.send_video_note(message.chat.id, v)
     else:
         bot.send_message(message.chat.id, "Файл видео не найден 🎥❌")
+
+
+@bot.message_handler(commands=['reset'])
+def reset_game_command(message):
+    user_id = message.from_user.id
+    admin_id = 833674307
+    if user_id != admin_id:
+        bot.reply_to(message, "У вас нет прав для этой команды 🔐")
+        return
+    database['lobby'] = {
+        "status": "CLOSED",
+        "players": {}
+    }
+
+    database['players_card'] = []
+    database['user_ordinal'] = 1
+
+    if 'used' in database:
+        for key in database['used']:
+            database['used'][key] = []
+    else:
+        database['used'] = {
+            "professions": [],
+            "healths": [],
+            "phobias": [],
+            "hobbies": [],
+            "facts": [],
+            "baggages": [],
+            "cards": []
+        }
+
+    save_database()
+
+    bot.send_message(message.chat.id, "<b>🧹 База данных успешно очищена!</b>\n\n"
+                                      "• Лобби закрыто\n"
+                                      "• Карты игроков удалены\n"
+                                      "• Списки повторов сброшены\n\n"
+                                      "Можно начинать новую игру с /play.", parse_mode='HTML')
 
 
 # @bot.message_handler(commands=["finish"])
