@@ -422,7 +422,7 @@ def play_command(message):
         if str(user_id) in lobby['players']:
             bot.send_message(message.chat.id, "Нельзя играть в бункер, пока ты уже в бункере 📛")
         else:
-            bot.send_message(message.chat.id, "Дверь бункера уже заперта, игра идет. Дождись окончания! ⏳")
+            bot.send_message(message.chat.id, "Дверь бункера уже заперта. Дождись окончания игры! ⏳")
         return
 
     if lobby['status'] == 'CLOSED':
@@ -473,10 +473,10 @@ def handle_lobby_callbacks(call):
             lobby['status'] = 'CLOSED'
 
         save_database()
-        bot.edit_message_text("Вы покинули лобби. Чтобы вернуться, введите /play 🚪", call.message.chat.id,
-                              call.message.message_id)
+        with suppress(Exception):
+            bot.delete_message(call.message.chat.id, call.message.message_id)
         broadcast_lobby_update()
-        bot.answer_callback_query(call.id)
+        bot.answer_callback_query(call.id, "Вы покинули лобби 🚪", show_alert=True)
 
     elif action == "start":
         if int(user_id) != 833674307:
@@ -670,12 +670,10 @@ def get_table_keyboard(user_id):
     admin_id = 833674307
 
     if int(user_id) == admin_id:
-        keyboard.row(
-            InlineKeyboardButton(text="Выгнать 👤", callback_data="admin_kick_list"),
-            InlineKeyboardButton(text="Обновить 🔄", callback_data="update_message")
-        )
+        keyboard.add(InlineKeyboardButton(text="Обновить", callback_data="update_message"))
+        keyboard.add(InlineKeyboardButton(text="Выгнать 🚪", callback_data="admin_kick_list"))
     else:
-        keyboard.add(InlineKeyboardButton(text="Обновить 🔄", callback_data="update_message"))
+        keyboard.add(InlineKeyboardButton(text="Обновить", callback_data="update_message"))
 
     return keyboard
 
@@ -816,7 +814,8 @@ def update_table_message(call):
 @bot.callback_query_handler(func=lambda call: call.data in ["admin_kick_list", "admin_kick_cancel"])
 def handle_admin_kick_navigation(call):
     admin_id = 833674307
-    if call.from_user.id != admin_id: return
+    if call.from_user.id != admin_id:
+        return
 
     if call.data == "admin_kick_cancel":
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id,
@@ -825,9 +824,14 @@ def handle_admin_kick_navigation(call):
 
     keyboard = InlineKeyboardMarkup()
     for user in database['players_card']:
-        keyboard.add(InlineKeyboardButton(f"❌ {user['name']}", callback_data=f"exec_kick_{user['id']}"))
+        if user['id'] == admin_id:
+            button_text = "Себя"
+        else:
+            button_text = f"{user['name']}"
 
-    keyboard.add(InlineKeyboardButton("Отмена 🔙", callback_data="admin_kick_cancel"))
+        keyboard.add(InlineKeyboardButton(button_text, callback_data=f"exec_kick_{user['id']}"))
+
+    keyboard.add(InlineKeyboardButton("Отменить ❌", callback_data="admin_kick_cancel"))
 
     bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=keyboard)
     bot.answer_callback_query(call.id)
