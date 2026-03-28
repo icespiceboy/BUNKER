@@ -369,7 +369,7 @@ def get_lobby_ui(user_id):
         if int(pid) == 833674307:
             status_emoji = "👑"
         else:
-            status_emoji = "🟢" if pdata['ready'] else "⏳"
+            status_emoji = "✅" if pdata['ready'] else "⏳"
             if not pdata['ready']:
                 all_ready = False
 
@@ -388,9 +388,9 @@ def get_lobby_ui(user_id):
     else:
         is_ready = players.get(str(user_id), {}).get('ready', False)
         if is_ready:
-            keyboard.add(InlineKeyboardButton("Я не готов 🔴", callback_data="lobby_ready"))
+            keyboard.add(InlineKeyboardButton("В ожидание ⏳", callback_data="lobby_ready"))
         else:
-            keyboard.add(InlineKeyboardButton("Я готов 🟢", callback_data="lobby_ready"))
+            keyboard.add(InlineKeyboardButton("Приготовиться ✅", callback_data="lobby_ready"))
         keyboard.add(InlineKeyboardButton("Покинуть лобби 🚪", callback_data="lobby_leave"))
 
     return text, keyboard
@@ -724,6 +724,11 @@ def generate_table_message_text():
 
     for user in database['players_card']:
         user_name = user['name']
+
+        if user.get('is_spectator'):
+            message_text += f"\n👁 <s><b>{user_name}</b></s>\n"
+            continue
+
         user_card = user['card']['chars']
         bio_info = user_card['bio']
         user_visible = user.get('card').get('visibility')
@@ -824,6 +829,9 @@ def handle_admin_kick_navigation(call):
 
     keyboard = InlineKeyboardMarkup()
     for user in database['players_card']:
+        if user.get('is_spectator'):
+            continue
+
         if user['id'] == admin_id:
             button_text = "Себя"
         else:
@@ -846,28 +854,34 @@ def handle_execute_kick(call):
     target_id = int(call.data.split('_')[-1])
     lobby = database['lobby']
 
-    database['players_card'] = [p for p in database['players_card'] if p['id'] != target_id]
+    for p in database['players_card']:
+        if p['id'] == target_id:
+            p['is_spectator'] = True
+            break
 
     player_id_str = str(target_id)
     if player_id_str in lobby['players']:
         msg_id = lobby['players'][player_id_str].get('lobby_message_id')
         if msg_id:
             with suppress(Exception):
-                bot.edit_message_text("<b>Вы были удалены из игры администратором 🚫</b>",
-                                      chat_id=target_id, message_id=msg_id, parse_mode='HTML')
+                bot.edit_message_text(
+                    "<b>Вы переведены в зрители администратором 👁</b>\nТеперь вы можете только наблюдать за столом.",
+                    chat_id=target_id, message_id=msg_id, parse_mode='HTML')
         del lobby['players'][player_id_str]
 
-    if not lobby['players']:
+    active_players = [p for p in database['players_card'] if not p.get('is_spectator')]
+
+    if not active_players:
         lobby['status'] = 'CLOSED'
         save_database()
         bot.answer_callback_query(call.id, "Последний игрок удален. Игра закрыта 🔒", show_alert=True)
-        bot.edit_message_text("<b>Все игроки удалены. Игра завершена 🛑</b>",
+        bot.edit_message_text("<b>Все игроки выгнаны. Игра завершена 🛑</b>",
                               call.message.chat.id, call.message.message_id, parse_mode='HTML')
         return
 
     save_database()
     update_table_message(call)
-    bot.answer_callback_query(call.id, "Игрок успешно изгнан 🗑")
+    bot.answer_callback_query(call.id, "Игрок переведен в зрители 👁")
 
 
 @bot.message_handler(commands=['generate'])
