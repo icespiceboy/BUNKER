@@ -473,7 +473,7 @@ def profile_command(message):
 #         bot.send_message(message.chat.id, f"⚠️ Ошибка: {str(e)}")
 
 
-@bot.message_handler(commands=['mikey'])
+@bot.message_handler(commands=['thriller'])
 def send_circle_message(message):
     video_path = 'media/mikey.mp4'
 
