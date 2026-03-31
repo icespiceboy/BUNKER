@@ -91,325 +91,330 @@ def play_command(message):
 @bot.message_handler(commands=['table'])
 def table_command(message):
     user_id = message.from_user.id
-    if check_subscription(user_id):
-        with suppress(Exception):
-            bot.delete_message(message.chat.id, message.message_id)
+    if not check_subscription(user_id):
+        send_subscription_message(message.chat.id)
+        return
 
-        lobby_players = db_manager.data.get('lobby', {}).get('players', {})
-        admin_id = 833674307
+    lobby_players = db_manager.data.get('lobby', {}).get('players', {})
+    admin_id = 833674307
 
-        if str(user_id) not in lobby_players and user_id != admin_id:
-            bot.send_message(message.chat.id, "Вы не в игре 😕📛")
-            return
+    if str(user_id) not in lobby_players and user_id != admin_id:
+        bot.send_message(message.chat.id, "Вы не в игре 😕📛")
+        return
 
-        message_text = generate_table_message_text()
+    message_text = generate_table_message_text()
 
-        for user in db_manager.data['players_card']:
-            p_id = user['id']
-            prev_msg_id = user.get('common_message_id')
-            kb = get_table_keyboard(p_id)
+    for user in db_manager.data['players_card']:
+        p_id = user['id']
+        prev_msg_id = user.get('common_message_id')
+        kb = get_table_keyboard(p_id)
 
-            try:
-                if prev_msg_id:
-                    bot.edit_message_text(message_text, p_id, prev_msg_id, parse_mode="HTML", reply_markup=kb)
-                else:
-                    sent = bot.send_message(p_id, message_text, parse_mode="HTML", reply_markup=kb)
-                    user['common_message_id'] = sent.message_id
-            except Exception:
+        try:
+            if prev_msg_id:
+                bot.edit_message_text(message_text, p_id, prev_msg_id, parse_mode="HTML", reply_markup=kb)
+            else:
                 sent = bot.send_message(p_id, message_text, parse_mode="HTML", reply_markup=kb)
                 user['common_message_id'] = sent.message_id
+        except Exception:
+            sent = bot.send_message(p_id, message_text, parse_mode="HTML", reply_markup=kb)
+            user['common_message_id'] = sent.message_id
 
-        admin_in_game = any(u['id'] == admin_id for u in db_manager.data['players_card'])
-        if not admin_in_game:
-            kb = get_table_keyboard(admin_id)
-            bot.send_message(admin_id, message_text, parse_mode='HTML', reply_markup=kb)
+    admin_in_game = any(u['id'] == admin_id for u in db_manager.data['players_card'])
+    if not admin_in_game:
+        kb = get_table_keyboard(admin_id)
+        bot.send_message(admin_id, message_text, parse_mode='HTML', reply_markup=kb)
 
-        db_manager.save()
-    else:
-        send_subscription_message(message.chat.id)
+    db_manager.save()
 
 
 @bot.message_handler(commands=['generate'])
 def gen_command(message):
     user_id = message.from_user.id
-    if check_subscription(user_id):
-        with suppress(Exception):
-            bot.delete_message(message.chat.id, message.message_id)
-        if user_id != 833674307:
-            bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой команды 🔐🚫")
-            return
-
-        lobby_players = db_manager.data.get('lobby', {}).get('players', {})
-
-        if not lobby_players:
-            bot.send_message(message.chat.id, "В лобби пока никого нет 🤷‍♂️")
-            return
-
-        message_text = "🖐 Выберите игрока (-ов):"
-        player_buttons = []
-        for p_id in lobby_players.keys():
-            p_name = db_manager.data['all_users'].get(str(p_id), f"ID: {p_id}")
-            player_buttons.append([InlineKeyboardButton(p_name, callback_data=f"generate_{p_id}")])
-
-        keyboard = [
-            [InlineKeyboardButton("Всем", callback_data="generate_all")],
-            *player_buttons,
-            [InlineKeyboardButton("Отменить ❌", callback_data="cancel_generate")]
-        ]
-
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        bot.send_message(message.chat.id, message_text, reply_markup=reply_markup)
-    else:
+    if not check_subscription(user_id):
         send_subscription_message(message.chat.id)
+        return
+
+    with suppress(Exception):
+        bot.delete_message(message.chat.id, message.message_id)
+    if user_id != 833674307:
+        bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой команды 🔐🚫")
+        return
+
+    lobby_players = db_manager.data.get('lobby', {}).get('players', {})
+
+    if not lobby_players:
+        bot.send_message(message.chat.id, "В лобби пока никого нет 🤷‍♂️")
+        return
+
+    message_text = "🖐 Выберите игрока (-ов):"
+    player_buttons = []
+    for p_id in lobby_players.keys():
+        p_name = db_manager.data['all_users'].get(str(p_id), f"ID: {p_id}")
+        player_buttons.append([InlineKeyboardButton(p_name, callback_data=f"generate_{p_id}")])
+
+    keyboard = [
+        [InlineKeyboardButton("Всем", callback_data="generate_all")],
+        *player_buttons,
+        [InlineKeyboardButton("Отменить ❌", callback_data="cancel_generate")]
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    bot.send_message(message.chat.id, message_text, reply_markup=reply_markup)
 
 
 @bot.message_handler(commands=['shuffle'])
 def shuffle_command(message):
     user_id = message.from_user.id
-    if check_subscription(user_id):
-        with suppress(Exception):
-            bot.delete_message(message.chat.id, message.message_id)
-        if user_id == 833674307:
-            lobby_players = db_manager.data.get('lobby', {}).get('players', {})
-            ids_in_game = [int(pid) for pid in lobby_players.keys()]
-
-            if not ids_in_game:
-                bot.send_message(message.chat.id, "Нет игроков для перемешивания 🚫")
-                return
-
-            active_players = [
-                player for player in db_manager.data['players_card']
-                if player['id'] in ids_in_game
-            ]
-
-            if len(active_players) < 2:
-                bot.send_message(message.chat.id, "Нужно минимум 2 игрока с картами для перемешивания ♻")
-                return
-
-            original_indexes = [p["card"]["indexes"]["prof"] for p in active_players]
-
-            max_attempts = 100
-            shuffled_indexes = original_indexes[:]
-            found = False
-            for _ in range(max_attempts):
-                random.shuffle(shuffled_indexes)
-                if all(orig != shuf for orig, shuf in zip(original_indexes, shuffled_indexes)):
-                    found = True
-                    break
-
-            if found:
-                for i, player in enumerate(active_players):
-                    new_prof_index = shuffled_indexes[i]
-                    gender = player["card"]["chars"]["bio"]["gender"]
-
-                    prof_options = professions.get(str(new_prof_index), ["Неизвестно"])
-
-                    if gender == 'М' or len(prof_options) == 1:
-                        new_prof_text = prof_options[0]
-                    else:
-                        new_prof_text = prof_options[1]
-
-                    player["card"]["indexes"]["prof"] = new_prof_index
-                    player["card"]["chars"]["prof"] = new_prof_text
-
-                db_manager.save()
-            else:
-                bot.send_message(message.chat.id, "Не удалось перемешать профессии без совпадений 😕")
-                return
-
-            for player in active_players:
-                try:
-                    call_command(player['id'], player['card_message_id'])
-                except Exception as e:
-                    print(f"Ошибка обновления у {player['id']}: {e}")
-
-            bot.send_message(message.chat.id, "Профессии успешно перемешаны с учётом пола ♻")
-        else:
-            bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой команды 🔐🚫")
-    else:
+    if not check_subscription(user_id):
         send_subscription_message(message.chat.id)
+        return
+
+    with suppress(Exception):
+        bot.delete_message(message.chat.id, message.message_id)
+    if user_id == 833674307:
+        lobby_players = db_manager.data.get('lobby', {}).get('players', {})
+        ids_in_game = [int(pid) for pid in lobby_players.keys()]
+
+        if not ids_in_game:
+            bot.send_message(message.chat.id, "Нет игроков для перемешивания 🚫")
+            return
+
+        active_players = [
+            player for player in db_manager.data['players_card']
+            if player['id'] in ids_in_game
+        ]
+
+        if len(active_players) < 2:
+            bot.send_message(message.chat.id, "Нужно минимум 2 игрока с картами для перемешивания ♻")
+            return
+
+        original_indexes = [p["card"]["indexes"]["prof"] for p in active_players]
+
+        max_attempts = 100
+        shuffled_indexes = original_indexes[:]
+        found = False
+        for _ in range(max_attempts):
+            random.shuffle(shuffled_indexes)
+            if all(orig != shuf for orig, shuf in zip(original_indexes, shuffled_indexes)):
+                found = True
+                break
+
+        if found:
+            for i, player in enumerate(active_players):
+                new_prof_index = shuffled_indexes[i]
+                gender = player["card"]["chars"]["bio"]["gender"]
+
+                prof_options = professions.get(str(new_prof_index), ["Неизвестно"])
+
+                if gender == 'М' or len(prof_options) == 1:
+                    new_prof_text = prof_options[0]
+                else:
+                    new_prof_text = prof_options[1]
+
+                player["card"]["indexes"]["prof"] = new_prof_index
+                player["card"]["chars"]["prof"] = new_prof_text
+
+            db_manager.save()
+        else:
+            bot.send_message(message.chat.id, "Не удалось перемешать профессии без совпадений 😕")
+            return
+
+        for player in active_players:
+            try:
+                call_command(player['id'], player['card_message_id'])
+            except Exception as e:
+                print(f"Ошибка обновления у {player['id']}: {e}")
+
+        bot.send_message(message.chat.id, "Профессии успешно перемешаны с учётом пола ♻")
+    else:
+        bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой команды 🔐🚫")
 
 
 @bot.message_handler(commands=['swap'])
 def swap_command(message):
     user_id = message.from_user.id
-    if check_subscription(user_id):
-        with suppress(Exception):
-            bot.delete_message(message.chat.id, message.message_id)
-        if user_id != 833674307:
-            bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой команды 🔐🚫")
-            return
-
-        lobby_players = db_manager.data.get('lobby', {}).get('players', {})
-        if not lobby_players:
-            bot.send_message(message.chat.id, "В игре пока никого нет 🤷‍♂️")
-            return
-
-        message_text = "🎨 Выберите характеристику:"
-        keyboard = [
-            [InlineKeyboardButton("Профессия", callback_data="swap_char_prof")],
-            [InlineKeyboardButton("Здоровье", callback_data="swap_char_heal")],
-            [InlineKeyboardButton("Фобия", callback_data="swap_char_phob")],
-            [InlineKeyboardButton("Хобби", callback_data="swap_char_hobb")],
-            [InlineKeyboardButton("Факт", callback_data="swap_char_fact")],
-            [InlineKeyboardButton("Багаж", callback_data="swap_char_bagg")],
-            [InlineKeyboardButton("Отменить ❌", callback_data="cancel_swap")]
-        ]
-
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        bot.send_message(message.chat.id, message_text, reply_markup=reply_markup)
-    else:
+    if not check_subscription(user_id):
         send_subscription_message(message.chat.id)
+        return
+
+    with suppress(Exception):
+        bot.delete_message(message.chat.id, message.message_id)
+    if user_id != 833674307:
+        bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой команды 🔐🚫")
+        return
+
+    lobby_players = db_manager.data.get('lobby', {}).get('players', {})
+    if not lobby_players:
+        bot.send_message(message.chat.id, "В игре пока никого нет 🤷‍♂️")
+        return
+
+    message_text = "🎨 Выберите характеристику:"
+    keyboard = [
+        [InlineKeyboardButton("Профессия", callback_data="swap_char_prof")],
+        [InlineKeyboardButton("Здоровье", callback_data="swap_char_heal")],
+        [InlineKeyboardButton("Фобия", callback_data="swap_char_phob")],
+        [InlineKeyboardButton("Хобби", callback_data="swap_char_hobb")],
+        [InlineKeyboardButton("Факт", callback_data="swap_char_fact")],
+        [InlineKeyboardButton("Багаж", callback_data="swap_char_bagg")],
+        [InlineKeyboardButton("Отменить ❌", callback_data="cancel_swap")]
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    bot.send_message(message.chat.id, message_text, reply_markup=reply_markup)
 
 
 @bot.message_handler(commands=['fertility'])
 def fer_command(message):
     user_id = message.from_user.id
-    if check_subscription(user_id):
-        with suppress(Exception):
-            bot.delete_message(message.chat.id, message.message_id)
-        if message.chat.id == 833674307:
-            lobby_players = db_manager.data.get('lobby', {}).get('players', {})
-
-            if not lobby_players:
-                bot.send_message(message.chat.id, "В игре нет активных участников 😕📛")
-                return
-
-            message_text = "👥 Выберите игрока:"
-            keyboard = []
-
-            for player_id in lobby_players.keys():
-                player_name = db_manager.data['all_users'].get(str(player_id), f"ID: {player_id}")
-                keyboard.append([InlineKeyboardButton(player_name, callback_data=f"remove_fertility_{player_id}")])
-
-            keyboard.append([InlineKeyboardButton("Отменить ❌", callback_data="cancel_fertility")])
-
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            bot.send_message(message.chat.id, message_text, reply_markup=reply_markup)
-        else:
-            bot.send_message(message.chat.id, "У вас нет разрешения на выполнение \
-            этой команды 🔐🚫")
-    else:
+    if not check_subscription(user_id):
         send_subscription_message(message.chat.id)
+        return
+
+    with suppress(Exception):
+        bot.delete_message(message.chat.id, message.message_id)
+    if message.chat.id == 833674307:
+        lobby_players = db_manager.data.get('lobby', {}).get('players', {})
+
+        if not lobby_players:
+            bot.send_message(message.chat.id, "В игре нет активных участников 😕📛")
+            return
+
+        message_text = "👥 Выберите игрока:"
+        keyboard = []
+
+        for player_id in lobby_players.keys():
+            player_name = db_manager.data['all_users'].get(str(player_id), f"ID: {player_id}")
+            keyboard.append([InlineKeyboardButton(player_name, callback_data=f"remove_fertility_{player_id}")])
+
+        keyboard.append([InlineKeyboardButton("Отменить ❌", callback_data="cancel_fertility")])
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        bot.send_message(message.chat.id, message_text, reply_markup=reply_markup)
+    else:
+        bot.send_message(message.chat.id, "У вас нет разрешения на выполнение \
+        этой команды 🔐🚫")
 
 
 @bot.message_handler(commands=['shuffle'])
 def shuffle_command(message):
     user_id = message.from_user.id
-    if check_subscription(user_id):
-        with suppress(Exception):
-            bot.delete_message(message.chat.id, message.message_id)
-        if user_id == 833674307:
-            lobby_players = db_manager.data.get('lobby', {}).get('players', {})
-            ids_in_game = [int(pid) for pid in lobby_players.keys()]
-
-            if not ids_in_game:
-                bot.send_message(message.chat.id, "Нет игроков для перемешивания 🚫")
-                return
-
-            active_players = [
-                player for player in db_manager.data['players_card']
-                if player['id'] in ids_in_game
-            ]
-
-            if len(active_players) < 2:
-                bot.send_message(message.chat.id, "Нужно минимум 2 игрока с картами для перемешивания ♻")
-                return
-
-            original_indexes = [p["card"]["indexes"]["prof"] for p in active_players]
-
-            max_attempts = 100
-            shuffled_indexes = original_indexes[:]
-            found = False
-            for _ in range(max_attempts):
-                random.shuffle(shuffled_indexes)
-                if all(orig != shuf for orig, shuf in zip(original_indexes, shuffled_indexes)):
-                    found = True
-                    break
-
-            if found:
-                for i, player in enumerate(active_players):
-                    new_prof_index = shuffled_indexes[i]
-                    gender = player["card"]["chars"]["bio"]["gender"]
-
-                    prof_options = professions.get(str(new_prof_index), ["Неизвестно"])
-
-                    if gender == 'М' or len(prof_options) == 1:
-                        new_prof_text = prof_options[0]
-                    else:
-                        new_prof_text = prof_options[1]
-
-                    player["card"]["indexes"]["prof"] = new_prof_index
-                    player["card"]["chars"]["prof"] = new_prof_text
-
-                db_manager.save()
-            else:
-                bot.send_message(message.chat.id, "Не удалось перемешать профессии без совпадений 😕")
-                return
-
-            for player in active_players:
-                try:
-                    call_command(player['id'], player['card_message_id'])
-                except Exception as e:
-                    print(f"Ошибка обновления у {player['id']}: {e}")
-
-            bot.send_message(message.chat.id, "Профессии успешно перемешаны с учётом пола ♻")
-        else:
-            bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой команды 🔐🚫")
-    else:
+    if not check_subscription(user_id):
         send_subscription_message(message.chat.id)
+        return
+
+    with suppress(Exception):
+        bot.delete_message(message.chat.id, message.message_id)
+    if user_id == 833674307:
+        lobby_players = db_manager.data.get('lobby', {}).get('players', {})
+        ids_in_game = [int(pid) for pid in lobby_players.keys()]
+
+        if not ids_in_game:
+            bot.send_message(message.chat.id, "Нет игроков для перемешивания 🚫")
+            return
+
+        active_players = [
+            player for player in db_manager.data['players_card']
+            if player['id'] in ids_in_game
+        ]
+
+        if len(active_players) < 2:
+            bot.send_message(message.chat.id, "Нужно минимум 2 игрока с картами для перемешивания ♻")
+            return
+
+        original_indexes = [p["card"]["indexes"]["prof"] for p in active_players]
+
+        max_attempts = 100
+        shuffled_indexes = original_indexes[:]
+        found = False
+        for _ in range(max_attempts):
+            random.shuffle(shuffled_indexes)
+            if all(orig != shuf for orig, shuf in zip(original_indexes, shuffled_indexes)):
+                found = True
+                break
+
+        if found:
+            for i, player in enumerate(active_players):
+                new_prof_index = shuffled_indexes[i]
+                gender = player["card"]["chars"]["bio"]["gender"]
+
+                prof_options = professions.get(str(new_prof_index), ["Неизвестно"])
+
+                if gender == 'М' or len(prof_options) == 1:
+                    new_prof_text = prof_options[0]
+                else:
+                    new_prof_text = prof_options[1]
+
+                player["card"]["indexes"]["prof"] = new_prof_index
+                player["card"]["chars"]["prof"] = new_prof_text
+
+            db_manager.save()
+        else:
+            bot.send_message(message.chat.id, "Не удалось перемешать профессии без совпадений 😕")
+            return
+
+        for player in active_players:
+            try:
+                call_command(player['id'], player['card_message_id'])
+            except Exception as e:
+                print(f"Ошибка обновления у {player['id']}: {e}")
+
+        bot.send_message(message.chat.id, "Профессии успешно перемешаны с учётом пола ♻")
+    else:
+        bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой команды 🔐🚫")
 
 
 @bot.message_handler(commands=['card'])
 def card_command(message):
     user_id = message.from_user.id
-    if check_subscription(user_id):
-        with suppress(Exception):
-            bot.delete_message(message.chat.id, message.message_id)
-        user = next((player for player in db_manager.save()['players_card'] if player['id'] == user_id), None)
-
-        if not user:
-            bot.send_message(user_id, "Вы не в игре 😕📛")
-            return
-
-        card_data = user['card']
-
-        new_message_text = generate_message_text(card_data['chars'], card_data['visibility'])
-        keyboard = [
-            [InlineKeyboardButton("БИО", callback_data="bio")],
-            [InlineKeyboardButton("Профессия", callback_data="prof"),
-             InlineKeyboardButton("Здоровье", callback_data="heal"),
-             InlineKeyboardButton("Фобия", callback_data="phob")],
-            [InlineKeyboardButton("Хобби", callback_data="hobb"),
-             InlineKeyboardButton("Факт", callback_data="fact"),
-             InlineKeyboardButton("Багаж", callback_data="bagg")],
-            [InlineKeyboardButton("Карта №1", callback_data="card1"),
-             InlineKeyboardButton("Карта №2", callback_data="card2")],
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-
-        sent_message = bot.send_message(user_id, new_message_text, reply_markup=reply_markup, parse_mode='HTML')
-
-        user['card_message_id'] = sent_message.message_id
-
-        db_manager.save()
-    else:
+    if not check_subscription(user_id):
         send_subscription_message(message.chat.id)
+        return
+
+    with suppress(Exception):
+        bot.delete_message(message.chat.id, message.message_id)
+    user = next((player for player in db_manager.save()['players_card'] if player['id'] == user_id), None)
+
+    if not user:
+        bot.send_message(user_id, "Вы не в игре 😕📛")
+        return
+
+    card_data = user['card']
+
+    new_message_text = generate_message_text(card_data['chars'], card_data['visibility'])
+    keyboard = [
+        [InlineKeyboardButton("БИО", callback_data="bio")],
+        [InlineKeyboardButton("Профессия", callback_data="prof"),
+         InlineKeyboardButton("Здоровье", callback_data="heal"),
+         InlineKeyboardButton("Фобия", callback_data="phob")],
+        [InlineKeyboardButton("Хобби", callback_data="hobb"),
+         InlineKeyboardButton("Факт", callback_data="fact"),
+         InlineKeyboardButton("Багаж", callback_data="bagg")],
+        [InlineKeyboardButton("Карта №1", callback_data="card1"),
+         InlineKeyboardButton("Карта №2", callback_data="card2")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    sent_message = bot.send_message(user_id, new_message_text, reply_markup=reply_markup, parse_mode='HTML')
+
+    user['card_message_id'] = sent_message.message_id
+
+    db_manager.save()
 
 
 @bot.message_handler(commands=['profile'])
 def profile_command(message):
     user_id = message.from_user.id
-    if check_subscription(user_id):
-        with suppress(Exception):
-            bot.delete_message(message.chat.id, message.message_id)
-
-        text, keyboard = get_profile_ui(user_id)
-
-        bot.send_message(message.chat.id, text, reply_markup=keyboard,
-                         parse_mode='HTML')
-    else:
+    if not check_subscription(user_id):
         send_subscription_message(message.chat.id)
+        return
+
+    with suppress(Exception):
+        bot.delete_message(message.chat.id, message.message_id)
+
+    text, keyboard = get_profile_ui(user_id)
+
+    bot.send_message(message.chat.id, text, reply_markup=keyboard,
+                     parse_mode='HTML')
 
 
 # @bot.message_handler(commands=["finish"])
