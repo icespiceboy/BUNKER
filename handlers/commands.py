@@ -372,7 +372,7 @@ def card_command(message):
 
     with suppress(Exception):
         bot.delete_message(message.chat.id, message.message_id)
-    user = next((player for player in db_manager.save()['players_card'] if player['id'] == user_id), None)
+    user = next((player for player in db_manager.data['players_card'] if player['id'] == user_id), None)
 
     if not user:
         bot.send_message(user_id, "Вы не в игре 😕📛")
