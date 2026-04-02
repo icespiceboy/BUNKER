@@ -1,0 +1,21 @@
+{
+    "all_users": {
+      "12345678": "Player_1",
+      "87654321": "Player_2"
+    },
+    "lobby": {
+      "status": "CLOSED",
+      "players": {}
+    },
+    "players_card": [],
+    "used": {
+        "professions": [],
+      "healths": [],
+      "phobias": [],
+        "hobbies": [],
+      "facts": [],
+      "baggages": [],
+      "cards": []
+    },
+    "user_ordinal": 1
+}
