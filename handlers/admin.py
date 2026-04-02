@@ -1,11 +1,10 @@
-from src.config import bot
+from src.config import bot, ADMIN_ID
 from src.database_mgr import db_manager
 
 @bot.message_handler(commands=['reset'])
 def reset_game_command(message):
     user_id = message.from_user.id
-    admin_id = 833674307
-    if user_id != admin_id:
+    if user_id != ADMIN_ID:
         bot.reply_to(message, "У вас нет прав для этой команды 🔐")
         return
     db_manager.data['lobby'] = {

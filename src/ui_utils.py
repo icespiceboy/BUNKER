@@ -1,4 +1,4 @@
-from src.config import bot, CHANNEL_ID
+from src.config import bot, CHANNEL_ID, ADMIN_ID
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from src.database_mgr import db_manager
 
@@ -76,10 +76,9 @@ def generate_table_message_text():
 def get_lobby_ui(user_id):
     lobby = db_manager.data['lobby']
     players = lobby['players']
-    admin_id = "833674307"
 
     all_ready = True
-    is_admin_in_lobby = admin_id in players
+    is_admin_in_lobby = ADMIN_ID in players
 
     text = "<b>🗝 Лобби выживших открыто!</b> 🧳\n\n"
     text += "<i>Чтобы попасть в бункер, подтверди готовность. Когда все будут готовы, админ начнет раздачу карт</i>\n\n"
@@ -95,7 +94,7 @@ def get_lobby_ui(user_id):
     for pid, pdata in players.items():
         name = db_manager.data['all_users'].get(str(pid), "Неизвестный")
 
-        if str(pid) == admin_id:
+        if str(pid) == ADMIN_ID:
             status_emoji = "👑"
         else:
             status_emoji = "✅" if pdata['ready'] else "⏳"
@@ -108,7 +107,7 @@ def get_lobby_ui(user_id):
     text += f"\n<i>Всего участников: {len(players)}</i>"
 
     keyboard = InlineKeyboardMarkup()
-    is_user_admin = str(user_id) == admin_id
+    is_user_admin = str(user_id) == ADMIN_ID
 
     if is_user_admin:
         if all_ready and len(players) > 1:
@@ -144,9 +143,8 @@ def get_card_keyboard():
 
 def get_table_keyboard(user_id):
     keyboard = InlineKeyboardMarkup()
-    admin_id = 833674307
 
-    if int(user_id) == admin_id:
+    if int(user_id) == ADMIN_ID:
         keyboard.add(InlineKeyboardButton(text="Обновить", callback_data="update_message"))
         keyboard.add(InlineKeyboardButton(text="Выгнать 🚪", callback_data="admin_kick_list"))
     else:

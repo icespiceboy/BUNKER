@@ -3,7 +3,7 @@ import os
 from contextlib import suppress
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from src.database_mgr import db_manager
-from src.config import professions, CHANNEL_ID
+from src.config import professions, CHANNEL_ID, ADMIN_ID
 from src.game_logic import call_command, broadcast_lobby_update, bot
 from src.ui_utils import (generate_table_message_text, get_table_keyboard, get_profile_ui, get_lobby_ui,
                           send_subscription_message)
@@ -64,7 +64,7 @@ def play_command(message):
         lobby['status'] = 'OPEN'
 
     if str(user_id) not in lobby['players']:
-        is_ready_by_default = (user_id == 833674307)
+        is_ready_by_default = (user_id == ADMIN_ID)
 
         lobby['players'][str(user_id)] = {
             'ready': is_ready_by_default,
@@ -96,9 +96,8 @@ def table_command(message):
         return
 
     lobby_players = db_manager.data.get('lobby', {}).get('players', {})
-    admin_id = 833674307
 
-    if str(user_id) not in lobby_players and user_id != admin_id:
+    if str(user_id) not in lobby_players and user_id != ADMIN_ID:
         bot.send_message(message.chat.id, "Вы не в игре 😕📛")
         return
 
@@ -119,10 +118,10 @@ def table_command(message):
             sent = bot.send_message(p_id, message_text, parse_mode="HTML", reply_markup=kb)
             user['common_message_id'] = sent.message_id
 
-    admin_in_game = any(u['id'] == admin_id for u in db_manager.data['players_card'])
+    admin_in_game = any(u['id'] == ADMIN_ID for u in db_manager.data['players_card'])
     if not admin_in_game:
-        kb = get_table_keyboard(admin_id)
-        bot.send_message(admin_id, message_text, parse_mode='HTML', reply_markup=kb)
+        kb = get_table_keyboard(ADMIN_ID)
+        bot.send_message(ADMIN_ID, message_text, parse_mode='HTML', reply_markup=kb)
 
     db_manager.save()
 
@@ -136,7 +135,7 @@ def gen_command(message):
 
     with suppress(Exception):
         bot.delete_message(message.chat.id, message.message_id)
-    if user_id != 833674307:
+    if user_id != ADMIN_ID:
         bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой команды 🔐🚫")
         return
 
@@ -171,7 +170,7 @@ def shuffle_command(message):
 
     with suppress(Exception):
         bot.delete_message(message.chat.id, message.message_id)
-    if user_id == 833674307:
+    if user_id == ADMIN_ID:
         lobby_players = db_manager.data.get('lobby', {}).get('players', {})
         ids_in_game = [int(pid) for pid in lobby_players.keys()]
 
@@ -239,7 +238,7 @@ def swap_command(message):
 
     with suppress(Exception):
         bot.delete_message(message.chat.id, message.message_id)
-    if user_id != 833674307:
+    if user_id != ADMIN_ID:
         bot.send_message(message.chat.id, "У вас нет разрешения на выполнение этой команды 🔐🚫")
         return
 
@@ -272,7 +271,7 @@ def fer_command(message):
 
     with suppress(Exception):
         bot.delete_message(message.chat.id, message.message_id)
-    if message.chat.id == 833674307:
+    if message.chat.id == ADMIN_ID:
         lobby_players = db_manager.data.get('lobby', {}).get('players', {})
 
         if not lobby_players:
@@ -304,7 +303,7 @@ def shuffle_command(message):
 
     with suppress(Exception):
         bot.delete_message(message.chat.id, message.message_id)
-    if user_id == 833674307:
+    if user_id == ADMIN_ID:
         lobby_players = db_manager.data.get('lobby', {}).get('players', {})
         ids_in_game = [int(pid) for pid in lobby_players.keys()]
 

@@ -1,7 +1,7 @@
 from contextlib import suppress
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from src.database_mgr import db_manager
-from src.config import professions, facts
+from src.config import professions, facts, ADMIN_ID
 from src.game_logic import update_characteristics, call_command, get_card, broadcast_lobby_update, bot
 from src.ui_utils import (get_card_keyboard, generate_table_message_text, get_table_keyboard, get_profile_ui)
 from src.utils import generate_message_text, check_subscription
@@ -34,7 +34,7 @@ def handle_lobby_callbacks(call):
         bot.answer_callback_query(call.id, "Вы покинули лобби 🚪", show_alert=True)
 
     elif action == "start":
-        if int(user_id) != 833674307:
+        if int(user_id) != ADMIN_ID:
             bot.answer_callback_query(call.id, "Только админ может начать игру!", show_alert=True)
             return
 
@@ -199,12 +199,11 @@ def update_table_message(call):
                     bot.edit_message_text(message_text, p_id, prev_msg_id,
                                           parse_mode="HTML", reply_markup=get_table_keyboard(p_id))
 
-        admin_id = 833674307
-        admin_in_players = any(u['id'] == admin_id for u in db_manager.data['players_card'])
-        if user_id == admin_id and not admin_in_players:
+        admin_in_players = any(u['id'] == ADMIN_ID for u in db_manager.data['players_card'])
+        if user_id == ADMIN_ID and not admin_in_players:
             with suppress(Exception):
-                bot.edit_message_text(message_text, admin_id, call.message.message_id,
-                                      parse_mode="HTML", reply_markup=get_table_keyboard(admin_id))
+                bot.edit_message_text(message_text, ADMIN_ID, call.message.message_id,
+                                      parse_mode="HTML", reply_markup=get_table_keyboard(ADMIN_ID))
 
         bot.answer_callback_query(call.id, "Общий стол обновлен для всех игроков! ✅")
     else:
@@ -213,13 +212,12 @@ def update_table_message(call):
 
 @bot.callback_query_handler(func=lambda call: call.data in ["admin_kick_list", "admin_kick_cancel"])
 def handle_admin_kick_navigation(call):
-    admin_id = 833674307
-    if call.from_user.id != admin_id:
+    if call.from_user.id != ADMIN_ID:
         return
 
     if call.data == "admin_kick_cancel":
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id,
-                                      reply_markup=get_table_keyboard(admin_id))
+                                      reply_markup=get_table_keyboard(ADMIN_ID))
         return
 
     keyboard = InlineKeyboardMarkup()
@@ -227,7 +225,7 @@ def handle_admin_kick_navigation(call):
         if user.get('is_spectator'):
             continue
 
-        if user['id'] == admin_id:
+        if user['id'] == ADMIN_ID:
             button_text = "Себя"
         else:
             button_text = f"{user['name']}"
@@ -242,8 +240,7 @@ def handle_admin_kick_navigation(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("exec_kick_"))
 def handle_execute_kick(call):
-    admin_id = 833674307
-    if call.from_user.id != admin_id:
+    if call.from_user.id != ADMIN_ID:
         return
 
     target_id = int(call.data.split('_')[-1])
