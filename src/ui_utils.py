@@ -76,18 +76,26 @@ def generate_table_message_text():
 def get_lobby_ui(user_id):
     lobby = db_manager.data['lobby']
     players = lobby['players']
+    admin_id = "833674307"
+
+    all_ready = True
+    is_admin_in_lobby = admin_id in players
 
     text = "<b>🗝 Лобби выживших открыто!</b> 🧳\n\n"
     text += "<i>Чтобы попасть в бункер, подтверди готовность. Когда все будут готовы, админ начнет раздачу карт</i>\n\n"
-    text += "<b>👥 Список группы:</b>\n"
+    if is_admin_in_lobby:
+        text += "<b>👥 Список группы:</b>\n"
+    else:
+        text += "<b>👥 Список группы:</b>\n0. Ожидаем админа ⏳\n"
 
-    all_ready = True
+    if not players:
+        all_ready = False
+
     count = 1
-
     for pid, pdata in players.items():
         name = db_manager.data['all_users'].get(str(pid), "Неизвестный")
 
-        if int(pid) == 833674307:
+        if str(pid) == admin_id:
             status_emoji = "👑"
         else:
             status_emoji = "✅" if pdata['ready'] else "⏳"
@@ -100,14 +108,16 @@ def get_lobby_ui(user_id):
     text += f"\n<i>Всего участников: {len(players)}</i>"
 
     keyboard = InlineKeyboardMarkup()
-    is_admin = int(user_id) == 833674307
+    is_user_admin = str(user_id) == admin_id
 
-    if is_admin:
+    if is_user_admin:
         if all_ready and len(players) > 1:
             keyboard.add(InlineKeyboardButton("Начать игру 🤼‍♀️", callback_data="lobby_start"))
         keyboard.add(InlineKeyboardButton("Покинуть лобби 🚪", callback_data="lobby_leave"))
     else:
-        is_ready = players.get(str(user_id), {}).get('ready', False)
+        player_data = players.get(str(user_id), {})
+        is_ready = player_data.get('ready', False)
+
         if is_ready:
             keyboard.add(InlineKeyboardButton("В ожидание ⏳", callback_data="lobby_ready"))
         else:
