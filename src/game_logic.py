@@ -138,15 +138,27 @@ def get_fact(gender):
 
 def get_baggage():
     used_baggages = db_manager.data['used']['baggages']
+    selected_items = []
+    selected_indexes = []
 
-    while True:
+    count = 2 if random.random() <= 0.9 else 1
+
+    while len(selected_items) < count:
         baggage_index = random.choice(list(baggages.keys()))
-        if baggage_index not in used_baggages:
-            baggage = baggages[baggage_index][0]
+        if baggage_index not in used_baggages and baggage_index not in selected_indexes:
+            selected_items.append(baggages[baggage_index][0])
+            selected_indexes.append(baggage_index)
             used_baggages.append(baggage_index)
-            break
 
-    return baggage, baggage_index
+    if len(selected_items) == 2:
+        item1 = selected_items[0]
+        item2 = selected_items[1]
+        item2_lower = item2[0].lower() + item2[1:]
+        baggage_str = f"{item1} и {item2_lower}"
+    else:
+        baggage_str = selected_items[0]
+
+    return baggage_str, ", ".join(selected_indexes)
 
 
 def get_card():
